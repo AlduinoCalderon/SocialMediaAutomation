@@ -957,14 +957,11 @@ body {
 
 /* Facebook Widget Oficial */
 .fb-post {
-    width: 100% !important;
-    max-width: 500px;
     margin: 0 auto;
+    display: block;
 }
 
-.fb-post iframe {
-    border-radius: 8px !important;
-}
+/* NO establecer width aquí - debe usarse data-width según documentación */
 
 /* Twitter Widget Oficial */
 .twitter-widget-container {
@@ -1043,6 +1040,21 @@ body {
     font-weight: 500;
     margin-top: 4px;
     display: block;
+}
+
+.preview-help {
+    margin-top: 12px;
+    padding: 8px 12px;
+    background: rgba(102, 126, 234, 0.1);
+    border-radius: 6px;
+    border-left: 3px solid #667eea;
+}
+
+.preview-help small {
+    color: #667eea;
+    font-size: 0.8rem;
+    font-weight: 500;
+    line-height: 1.4;
 }
 
 .preview-info h4 {

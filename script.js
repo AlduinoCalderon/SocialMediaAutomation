@@ -31,7 +31,8 @@ let appState = {
     currentFilter: 'all',
     isLoading: false,
     facebookSDKReady: false,
-    twitterSDKReady: false
+    twitterSDKReady: false,
+    loadingWidgets: new Set() // Nuevo estado para controlar widgets en carga
 };
 
 // Elementos del DOM
@@ -50,7 +51,9 @@ const elements = {
 window.fbAsyncInit = function() {
     FB.init({
         xfbml: true,
-        version: 'v18.0'
+        version: 'v18.0',
+        cookie: true,
+        status: true
     });
     
     appState.facebookSDKReady = true;
@@ -62,6 +65,15 @@ window.fbAsyncInit = function() {
         widget.removeAttribute('data-pending');
         FB.XFBML.parse(widget.parentElement);
     });
+    
+    // Verificar si hay widgets que necesitan ser procesados
+    setTimeout(() => {
+        const unprocessedWidgets = document.querySelectorAll('.fb-post:not(.fb_iframe_widget)');
+        if (unprocessedWidgets.length > 0) {
+            console.log(`Procesando ${unprocessedWidgets.length} widgets de Facebook pendientes`);
+            FB.XFBML.parse();
+        }
+    }, 1000);
 };
 
 // Inicialización de la aplicación
@@ -339,10 +351,7 @@ function createLinkCard(link) {
             </div>
         </div>
         <div class="widget-container" id="widget-${link.id}">
-            <div class="loading">
-                <i class="fas fa-spinner"></i>
-                <p>Cargando widget...</p>
-            </div>
+            
         </div>
     `;
     
@@ -384,60 +393,82 @@ async function loadWidget(link) {
     }
 }
 
-// Función para cargar widget de Facebook (mejorada con la documentación oficial)
+// Función para cargar widget de Facebook (implementación correcta con API Graph)
 async function loadFacebookWidget(link, container) {
     try {
-        // Limpiar URL para mejor compatibilidad
-        const cleanUrl = link.url.split('?')[0];
+        // Extraer el ID del post de Facebook
+        const postId = extractFacebookPostId(link.url);
         
-        // Convertir URLs de share a URLs de post normales si es necesario
-        let facebookUrl = cleanUrl;
-        if (cleanUrl.includes('/share/p/')) {
-            const shareMatch = cleanUrl.match(/\/share\/p\/([^\/\?]+)/);
-            if (shareMatch) {
-                const postId = shareMatch[1];
-                // Intentar múltiples formatos de URL
-                const urlFormats = [
-                    `https://www.facebook.com/permalink.php?story_fbid=${postId}`,
-                    `https://www.facebook.com/posts/${postId}`,
-                    cleanUrl // Como último recurso, usar la URL original
-                ];
-                facebookUrl = urlFormats[0]; // Usar el primer formato
-            }
+        if (!postId) {
+            throw new Error('No se pudo extraer el ID del post de Facebook');
         }
         
         // Crear el widget de Facebook usando el SDK oficial
+        // data-width debe estar entre 350-750 píxeles según documentación
         container.innerHTML = `
             <div class="fb-post" 
-                 data-href="${facebookUrl}" 
+                 data-href="${link.url}" 
                  data-width="500" 
                  data-show-text="true"
-                 ${!appState.facebookSDKReady ? 'data-pending="true"' : ''}>
+                 data-lazy="true">
             </div>
         `;
         
         // Si el SDK ya está listo, parsear inmediatamente
         if (appState.facebookSDKReady && window.FB && window.FB.XFBML) {
             window.FB.XFBML.parse(container);
+        } else {
+            // Marcar como pendiente para cuando el SDK esté listo
+            const fbPost = container.querySelector('.fb-post');
+            if (fbPost) {
+                fbPost.setAttribute('data-pending', 'true');
+            }
         }
         
-        // Verificar si el widget se cargó correctamente después de 6 segundos
+        // Verificar si el widget se cargó correctamente después de 10 segundos
+        // (tiempo extendido para permitir carga completa)
         setTimeout(() => {
             const fbPost = container.querySelector('.fb-post');
             const iframe = container.querySelector('iframe');
             
             if (!iframe || iframe.style.display === 'none' || iframe.offsetHeight < 100) {
                 console.log('Facebook widget no se cargó correctamente, mostrando fallback');
-                showFacebookFallback(link, container);
+                handleCORSError('facebook', link, container);
             } else {
                 console.log('Facebook widget cargado exitosamente');
+                // Remover el indicador de carga si existe
+                const loadingOverlay = container.querySelector('.fb-post[data-pending="true"]');
+                if (loadingOverlay) {
+                    loadingOverlay.removeAttribute('data-pending');
+                }
             }
-        }, 6000);
+        }, 10000);
         
     } catch (error) {
         console.error('Facebook widget error:', error);
-        showFacebookFallback(link, container);
+        handleCORSError('facebook', link, container);
     }
+}
+
+// Función para extraer el ID del post de Facebook
+function extractFacebookPostId(url) {
+    // Patrones para diferentes formatos de URL de Facebook
+    const patterns = [
+        /facebook\.com\/share\/p\/([^\/\?]+)/,
+        /facebook\.com\/permalink\.php\?story_fbid=([^&]+)/,
+        /facebook\.com\/posts\/([^\/\?]+)/,
+        /facebook\.com\/[^\/]+\/posts\/([^\/\?]+)/,
+        /facebook\.com\/photo\.php\?fbid=([^&]+)/
+    ];
+    
+    for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match) {
+            return match[1];
+        }
+    }
+    
+    return null;
 }
 
 // Función para mostrar fallback de Facebook
@@ -451,7 +482,7 @@ function showFacebookFallback(link, container) {
                 <div class="preview-info">
                     <h4>Publicación de Facebook</h4>
                     <p>${link.title}</p>
-                    <span class="preview-status">Widget no disponible - Ver contenido original</span>
+                    <span class="preview-status">Widget no disponible - Restricciones de CORS</span>
                 </div>
             </div>
             <div class="preview-content">
@@ -459,6 +490,9 @@ function showFacebookFallback(link, container) {
                     <i class="fab fa-facebook"></i>
                     <p>Contenido de Facebook</p>
                     <span class="preview-note">Esta publicación está disponible en Facebook</span>
+                    <div class="preview-help">
+                        <small>💡 Las publicaciones públicas deberían mostrarse automáticamente</small>
+                    </div>
                 </div>
             </div>
             <div class="preview-actions">
@@ -494,103 +528,147 @@ async function loadInstagramWidget(link, container) {
     `;
 }
 
-// Función para cargar widget de Twitter/X (mejorada con oEmbed API)
+// Función para cargar widget de Twitter/X (implementación correcta con oEmbed y SDK)
 async function loadTwitterWidget(link, container) {
+    // Evitar cargas duplicadas
+    const containerId = container.id || `widget-${link.id}`;
+    if (appState.loadingWidgets.has(containerId)) {
+        console.log('Twitter widget ya está siendo cargado para:', containerId);
+        return;
+    }
+    
+    appState.loadingWidgets.add(containerId);
+    
     try {
         // Extraer información del tweet
         const tweetMatch = link.url.match(/(?:x\.com|twitter\.com)\/([^\/]+)\/status\/([^\/\?\s]+)/);
         
-        if (tweetMatch) {
-            const username = tweetMatch[1];
-            const tweetId = tweetMatch[2];
-            
-            // Método 1: Intentar con oEmbed API
-            try {
-                const oembedUrl = `https://publish.twitter.com/oembed?url=${encodeURIComponent(link.url)}&theme=light&dnt=true&hide_thread=true&hide_media=false&align=center&maxwidth=500`;
-                
-                const response = await fetch(oembedUrl);
-                if (response.ok) {
-                    const data = await response.json();
-                    
-                    container.innerHTML = `
-                        <div class="twitter-oembed-container">
-                            ${data.html}
-                        </div>
-                    `;
-                    
-                    // Cargar Twitter Widgets SDK si no está disponible
-                    await ensureTwitterSDK();
-                    
-                    // Renderizar el tweet
-                    if (window.twttr && window.twttr.widgets) {
-                        await window.twttr.widgets.load(container);
-                    }
-                    
-                    console.log('Twitter widget cargado con oEmbed API');
-                    return;
-                }
-            } catch (oembedError) {
-                console.log('oEmbed API falló, intentando método tradicional:', oembedError);
-            }
-            
-            // Método 2: Fallback con método tradicional
-            container.innerHTML = `
-                <div class="twitter-widget-container">
-                    <blockquote class="twitter-tweet" 
-                                data-theme="light" 
-                                data-dnt="true" 
-                                data-lang="es"
-                                data-conversation="none"
-                                data-cards="visible"
-                                data-align="center">
-                        <a href="${link.url}"></a>
-                    </blockquote>
-                </div>
-            `;
-            
-            // Cargar el widget con Twitter SDK
-            await ensureTwitterSDK();
-            
-            if (window.twttr && window.twttr.widgets) {
-                await window.twttr.widgets.load(container);
-            }
-            
-            // Verificar si se cargó correctamente después de 5 segundos
-            setTimeout(() => {
-                const tweetRendered = container.querySelector('.twitter-tweet-rendered');
-                const iframe = container.querySelector('iframe');
-                
-                if (!tweetRendered && !iframe) {
-                    console.log('Twitter widget no se cargó, mostrando fallback');
-                    showTwitterFallback(link, container, username);
-                } else {
-                    console.log('Twitter widget cargado exitosamente');
-                }
-            }, 5000);
-        } else {
+        if (!tweetMatch) {
             throw new Error('No se pudo extraer información del tweet');
         }
         
+        const username = tweetMatch[1];
+        const tweetId = tweetMatch[2];
+        
+        // Asegurar que Twitter SDK esté cargado primero
+        await ensureTwitterSDK();
+        
+        // Método 1: Intentar con oEmbed API (más confiable)
+        try {
+            const oembedUrl = `https://publish.twitter.com/oembed?url=${encodeURIComponent(link.url)}&theme=light&dnt=true&hide_thread=true&hide_media=false&align=center&maxwidth=500&omit_script=true`;
+            
+            const response = await fetch(oembedUrl, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                
+                container.innerHTML = `
+                    <div class="twitter-oembed-container">
+                        ${data.html}
+                    </div>
+                `;
+                
+                console.log('✅ Twitter widget cargado con oEmbed API');
+                appState.loadingWidgets.delete(containerId);
+                return;
+            }
+        } catch (oembedError) {
+            console.log('oEmbed API falló, intentando método tradicional:', oembedError);
+        }
+        
+        // Método 2: Usar createTweet para renderizado directo
+        if (window.twttr && window.twttr.widgets) {
+            const tweetElement = await window.twttr.widgets.createTweet(tweetId, container, {
+                theme: 'light',
+                dnt: true,
+                conversation: 'none',
+                cards: 'visible',
+                align: 'center',
+                width: 500
+            });
+            
+            if (tweetElement) {
+                console.log('✅ Twitter widget creado exitosamente con createTweet');
+                appState.loadingWidgets.delete(containerId);
+                return;
+            }
+        }
+        
+        // Método 3: Fallback con blockquote tradicional (solo si los anteriores fallaron)
+        container.innerHTML = `
+            <div class="twitter-widget-container">
+                <blockquote class="twitter-tweet" 
+                            data-theme="light" 
+                            data-dnt="true" 
+                            data-lang="es"
+                            data-conversation="none"
+                            data-cards="visible"
+                            data-align="center">
+                    <a href="${link.url}"></a>
+                </blockquote>
+            </div>
+        `;
+        
+        // Solo cargar widgets si no se ha cargado ya
+        if (window.twttr && window.twttr.widgets && !container.querySelector('.twitter-tweet-rendered')) {
+            await window.twttr.widgets.load(container);
+        }
+        
+        // Verificar si se cargó correctamente después de 6 segundos
+        setTimeout(() => {
+            const tweetRendered = container.querySelector('.twitter-tweet-rendered');
+            const iframe = container.querySelector('iframe');
+            const twitterTimeline = container.querySelector('.twitter-timeline');
+            
+            if (!tweetRendered && !iframe && !twitterTimeline) {
+                console.log('Twitter widget no se cargó, mostrando fallback');
+                handleCORSError('twitter', link, container);
+            } else {
+                console.log('✅ Twitter widget cargado exitosamente');
+            }
+            
+            appState.loadingWidgets.delete(containerId);
+        }, 6000);
+        
     } catch (error) {
         console.error('Twitter widget error:', error);
-        const username = link.url.match(/(?:x\.com|twitter\.com)\/([^\/]+)/)?.[1] || 'usuario';
-        showTwitterFallback(link, container, username);
+        handleCORSError('twitter', link, container);
+        appState.loadingWidgets.delete(containerId);
     }
 }
 
-// Función para asegurar que Twitter SDK esté cargado
+// Función mejorada para asegurar que Twitter SDK esté cargado
 async function ensureTwitterSDK() {
-    if (appState.twitterSDKReady) {
+    if (appState.twitterSDKReady && window.twttr && window.twttr.widgets) {
         return;
     }
     
     return new Promise((resolve) => {
-        if (window.twttr) {
-            appState.twitterSDKReady = true;
-            resolve();
+        // Si ya existe el script, solo esperar a que esté listo
+        if (document.querySelector('script[src*="platform.twitter.com/widgets.js"]')) {
+            const checkTwttr = setInterval(() => {
+                if (window.twttr && window.twttr.widgets) {
+                    clearInterval(checkTwttr);
+                    appState.twitterSDKReady = true;
+                    console.log('Twitter SDK ya estaba cargado');
+                    resolve();
+                }
+            }, 100);
+            
+            setTimeout(() => {
+                clearInterval(checkTwttr);
+                console.log('Twitter SDK timeout, continuando...');
+                resolve();
+            }, 10000);
             return;
         }
         
+        // Cargar el script si no existe
         const script = document.createElement('script');
         script.src = 'https://platform.twitter.com/widgets.js';
         script.async = true;
@@ -633,7 +711,7 @@ function showTwitterFallback(link, container, username) {
                 <div class="preview-info">
                     <h4>Tweet de @${username}</h4>
                     <p>${link.title}</p>
-                    <span class="preview-status">Widget no disponible - Ver contenido original</span>
+                    <span class="preview-status">Widget no disponible - Restricciones de CORS</span>
                 </div>
             </div>
             <div class="preview-content">
@@ -641,6 +719,9 @@ function showTwitterFallback(link, container, username) {
                     <i class="fab fa-x-twitter"></i>
                     <p>Contenido de X/Twitter</p>
                     <span class="preview-note">Este tweet está disponible en X/Twitter</span>
+                    <div class="preview-help">
+                        <small>💡 Los tweets públicos deberían mostrarse automáticamente</small>
+                    </div>
                 </div>
             </div>
             <div class="preview-actions">
@@ -772,3 +853,36 @@ window.addEventListener('error', function(e) {
 window.addEventListener('unhandledrejection', function(e) {
     console.error('Promesa rechazada:', e.reason);
 }); 
+
+// Función para manejar errores de CORS y proporcionar información útil
+function handleCORSError(platform, link, container) {
+    console.warn(`Error de CORS detectado para ${platform}:`, link.url);
+    
+    const errorMessage = platform === 'facebook' 
+        ? 'Widget de Facebook no disponible debido a restricciones de CORS. Las publicaciones públicas deberían mostrarse correctamente.'
+        : 'Widget de Twitter no disponible debido a restricciones de CORS. Las publicaciones públicas deberían mostrarse correctamente.';
+    
+    // Mostrar notificación informativa
+    showNotification(errorMessage, 'warning');
+    
+    // Mostrar fallback con información adicional
+    if (platform === 'facebook') {
+        showFacebookFallback(link, container);
+    } else if (platform === 'twitter') {
+        const username = link.url.match(/(?:x\.com|twitter\.com)\/([^\/]+)/)?.[1] || 'usuario';
+        showTwitterFallback(link, container, username);
+    }
+}
+
+// Función para verificar si una URL es accesible (sin CORS)
+async function checkURLAccessibility(url) {
+    try {
+        const response = await fetch(url, {
+            method: 'HEAD',
+            mode: 'no-cors'
+        });
+        return true;
+    } catch (error) {
+        return false;
+    }
+} 
