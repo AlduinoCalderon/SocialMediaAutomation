@@ -357,12 +357,9 @@ body {
     border: none;
 }
 
-/* Facebook Widget */
-.fb-post {
-    width: 100%;
-    max-width: 550px;
-    margin: 0 auto;
-}
+/* Facebook Widget Oficial - SIN ESTILOS (según documentación oficial) */
+/* Facebook dice: "No uses etiquetas de estilo CSS para ajustar el tamaño de un plugin" */
+/* El widget debe funcionar sin ningún CSS personalizado */
 
 /* Widget Fallback */
 .widget-fallback {
@@ -955,54 +952,6 @@ body {
     }
 } 
 
-/* Facebook Widget Oficial */
-.fb-post {
-    margin: 0 auto;
-    display: block;
-}
-
-/* NO establecer width aquí - debe usarse data-width según documentación */
-
-/* Twitter Widget Oficial */
-.twitter-widget-container {
-    text-align: center;
-    min-height: 300px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #f7fafc;
-    border-radius: 8px;
-    padding: 20px;
-}
-
-.twitter-tweet {
-    margin: 0 auto !important;
-    max-width: 500px !important;
-    width: 100% !important;
-}
-
-/* Estilos para widgets cargados */
-.widget-container .fb-post,
-.widget-container .twitter-tweet {
-    background: transparent;
-}
-
-/* Mejoras responsive para widgets oficiales */
-@media (max-width: 430px) {
-    .fb-post {
-        max-width: 100%;
-    }
-    
-    .twitter-widget-container {
-        padding: 16px;
-        min-height: 250px;
-    }
-    
-    .twitter-tweet {
-        max-width: 100% !important;
-    }
-} 
-
 /* Twitter oEmbed Container */
 .twitter-oembed-container {
     text-align: center;
@@ -1068,24 +1017,4 @@ body {
     font-size: 0.9rem;
     color: #718096;
     margin: 0;
-}
-
-/* Mejora para widgets pendientes de Facebook */
-.fb-post[data-pending="true"] {
-    opacity: 0.7;
-    position: relative;
-}
-
-.fb-post[data-pending="true"]:after {
-    content: "Cargando widget de Facebook...";
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: rgba(255, 255, 255, 0.9);
-    padding: 10px 15px;
-    border-radius: 5px;
-    font-size: 0.9rem;
-    color: #667eea;
-    font-weight: 500;
 } 
