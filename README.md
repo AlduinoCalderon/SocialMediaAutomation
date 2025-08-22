@@ -207,4 +207,93 @@ Para reportar problemas o solicitar nuevas funcionalidades:
 ---
 
 **Versión**: 1.0.0  
-**Última actualización**: Diciembre 2024 
+**Última actualización**: Diciembre 2024
+
+## 📱 Integración Facebook SDK
+
+### Configuración
+El proyecto incluye una integración correcta del Facebook SDK siguiendo las mejores prácticas oficiales:
+
+#### Configuración Inicial
+1. **App ID**: Reemplaza `'TU_APP_ID'` en `index.html` con tu App ID real de Facebook
+2. **Dominio**: Configura tu dominio en [Facebook Developers](https://developers.facebook.com/apps/)
+3. **SDK**: Usa la versión v19.0 (más reciente estable)
+
+#### Estructura Implementada
+```html
+<!-- Elemento requerido -->
+<div id="fb-root"></div>
+
+<!-- Configuración del SDK -->
+<script>
+  window.fbAsyncInit = function() {
+    FB.init({
+      appId: 'TU_APP_ID',
+      cookie: true,
+      xfbml: true,
+      version: 'v19.0'
+    });
+  };
+</script>
+
+<!-- Carga del SDK -->
+<script async defer crossorigin="anonymous" 
+        src="https://connect.facebook.net/es_LA/sdk.js"></script>
+```
+
+#### Widget de Publicación
+```html
+<div class="fb-post" 
+     data-href="URL_DE_LA_PUBLICACION" 
+     data-width="500" 
+     data-show-text="true">
+  <!-- Contenido de respaldo -->
+  <blockquote cite="URL_DE_LA_PUBLICACION">
+    <p>Cargando publicación...</p>
+    <a href="URL_DE_LA_PUBLICACION">Ver original</a>
+  </blockquote>
+</div>
+```
+
+### Funciones JavaScript Principales
+
+- `processPendingFacebookWidgets()`: Procesa widgets pendientes
+- `loadFacebookWidget()`: Carga widgets dinámicamente  
+- `FB.XFBML.parse()`: Re-procesa elementos después de inserción dinámica
+
+### Buenas Prácticas Implementadas
+
+✅ **Configuración correcta del SDK**
+- App ID configurable
+- Versión estable del SDK
+- Inicialización asíncrona
+
+✅ **Manejo de widgets dinámicos**
+- Uso de `FB.XFBML.parse()` después de inserción
+- Control de estados pendientes
+- Contenido de respaldo
+
+✅ **Evita errores CORS**
+- No accede al contenido interno del iframe
+- Solo verifica presencia y dimensiones
+- Manejo adecuado de errores
+
+✅ **Debugging integrado**
+- Logs detallados en consola
+- Verificación de estado del SDK
+- Detección de problemas comunes
+
+### Limitaciones y Consideraciones
+
+⚠️ **Localhost**: Los widgets pueden no cargar en `127.0.0.1`
+- Solución: Usar herramientas como ngrok para pruebas
+- En producción funciona correctamente
+
+⚠️ **App ID requerido**: Reemplazar `'TU_APP_ID'` con tu App ID real
+
+⚠️ **Configuración de dominio**: Agregar dominio en Facebook Developers
+
+### Referencias
+- [JavaScript SDK](https://developers.facebook.com/docs/javascript)
+- [Post Plugin](https://developers.facebook.com/docs/plugins/post/)
+- [Guía completa](./utils/facebookSDKGuide.js)

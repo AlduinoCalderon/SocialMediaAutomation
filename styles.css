@@ -1017,4 +1017,80 @@ body {
     font-size: 0.9rem;
     color: #718096;
     margin: 0;
-} 
+}
+
+/* Estilos para la sección de demostración de Facebook */
+.demo-section {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 16px;
+    padding: 24px;
+    margin: 24px 0;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.demo-section h3 {
+    color: #2d3748;
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.demo-section h3 i {
+    color: #1877f2;
+}
+
+.demo-section p {
+    color: #718096;
+    margin-bottom: 16px;
+    line-height: 1.6;
+}
+
+/* Estilos para widgets de Facebook */
+.fb-post {
+    margin: 16px 0;
+    max-width: 100%;
+}
+
+/* Contenedor de respaldo para widgets de Facebook */
+.facebook-fallback {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+    color: #6c757d;
+}
+
+.facebook-fallback i {
+    font-size: 2rem;
+    color: #1877f2;
+    margin-bottom: 8px;
+}
+
+.facebook-fallback a {
+    color: #1877f2;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.facebook-fallback a:hover {
+    text-decoration: underline;
+}
+
+/* Responsive para widgets de Facebook */
+@media (max-width: 768px) {
+    .demo-section {
+        margin: 16px 0;
+        padding: 16px;
+    }
+    
+    .fb-post {
+        margin: 12px 0;
+    }
+}

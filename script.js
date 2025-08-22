@@ -48,27 +48,43 @@ const elements = {
 };
 
 // Inicialización del SDK de Facebook según documentación oficial
-window.fbAsyncInit = function() {
-    console.log('🚀 [FB SDK] fbAsyncInit iniciado');
+// Esta función se ejecuta cuando el SDK de Facebook está listo
+// NOTA: La configuración principal del SDK ahora está en el HTML para seguir las mejores prácticas
+
+// Función para procesar widgets de Facebook pendientes
+function processPendingFacebookWidgets() {
+    console.log('🔄 [FB SDK] Iniciando procesamiento de widgets pendientes...');
     
-    FB.init({
-        xfbml: true,
-        version: 'v23.0'
-    });
-    
-    appState.facebookSDKReady = true;
-    console.log('✅ [FB SDK] Facebook SDK inicializado correctamente');
-    
-    // Procesar cualquier widget de Facebook pendiente
     const pendingFacebookWidgets = document.querySelectorAll('.fb-post[data-pending="true"]');
     console.log(`🔍 [FB SDK] Widgets pendientes encontrados: ${pendingFacebookWidgets.length}`);
     
+    if (pendingFacebookWidgets.length === 0) {
+        console.log('ℹ️ [FB SDK] No hay widgets pendientes para procesar');
+        return;
+    }
+    
     pendingFacebookWidgets.forEach((widget, index) => {
-        console.log(`🔄 [FB SDK] Procesando widget pendiente ${index + 1}`);
+        console.log(`🔄 [FB SDK] Procesando widget pendiente ${index + 1}/${pendingFacebookWidgets.length}`);
         widget.removeAttribute('data-pending');
-        FB.XFBML.parse(widget.parentElement);
+        
+        // Usar FB.XFBML.parse() en el contenedor padre para reprocesar
+        try {
+            FB.XFBML.parse(widget.parentElement);
+            console.log(`✅ [FB SDK] Widget ${index + 1} procesado exitosamente`);
+        } catch (error) {
+            console.error(`❌ [FB SDK] Error procesando widget ${index + 1}:`, error);
+        }
     });
-};
+    
+    // Actualizar el estado global si existe
+    if (window.appState) {
+        window.appState.facebookSDKReady = true;
+        console.log('✅ [FB SDK] Estado global actualizado');
+    }
+}
+
+// Hacer la función disponible globalmente para el SDK
+window.processPendingFacebookWidgets = processPendingFacebookWidgets;
 
 // Inicialización de la aplicación
 document.addEventListener('DOMContentLoaded', function() {
@@ -76,9 +92,38 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initializeApp() {
+    console.log('🚀 [APP] Inicializando aplicación...');
+    
     // Event listeners
     elements.analyzeBtn.addEventListener('click', analyzeLinks);
     elements.clearBtn.addEventListener('click', clearAll);
+    
+    // Event listener para re-procesar widgets de Facebook
+    const reprocessBtn = document.getElementById('reprocessFBWidgets');
+    if (reprocessBtn) {
+        reprocessBtn.addEventListener('click', () => {
+            console.log('🔄 [MANUAL] Reprocesando widgets de Facebook manualmente...');
+            
+            if (window.FB && window.FB.XFBML) {
+                // Re-parsear todos los widgets de Facebook
+                FB.XFBML.parse();
+                console.log('✅ [MANUAL] FB.XFBML.parse() ejecutado');
+                
+                // También procesar widgets pendientes
+                if (window.processPendingFacebookWidgets) {
+                    window.processPendingFacebookWidgets();
+                }
+                
+                // Feedback visual
+                reprocessBtn.innerHTML = '<i class="fas fa-check"></i> ¡Reprocesado!';
+                setTimeout(() => {
+                    reprocessBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Re-procesar Widgets FB';
+                }, 2000);
+            } else {
+                alert('El SDK de Facebook no está disponible aún. Intenta más tarde.');
+            }
+        });
+    }
     
     // Event listeners para filtros
     elements.filterBtns.forEach(btn => {
@@ -105,6 +150,33 @@ function initializeApp() {
     
     // Verificar estado de SDKs después de 3 segundos
     setTimeout(checkSDKStatus, 3000);
+    
+    // Verificar y re-procesar widgets pendientes después de 5 segundos
+    setTimeout(() => {
+        if (window.FB && window.FB.XFBML) {
+            console.log('🔄 [APP] Verificando widgets pendientes después de inicialización...');
+            const pendingWidgets = document.querySelectorAll('.fb-post[data-pending="true"]');
+            if (pendingWidgets.length > 0) {
+                console.log(`🔄 [APP] Re-procesando ${pendingWidgets.length} widgets pendientes...`);
+                if (window.processPendingFacebookWidgets) {
+                    window.processPendingFacebookWidgets();
+                }
+            }
+        }
+    }, 5000);
+    
+    // Agregar debugging para Facebook SDK
+    setTimeout(() => {
+        if (typeof debugFacebookIntegration === 'function') {
+            debugFacebookIntegration();
+        }
+        
+        // Log del estado de widgets estáticos
+        const staticWidgets = document.querySelectorAll('.fb-post');
+        console.log(`📊 [APP] Widgets estáticos de Facebook encontrados: ${staticWidgets.length}`);
+    }, 7000);
+    
+    console.log('✅ [APP] Aplicación inicializada correctamente');
 }
 
 // Función para verificar el estado de los SDKs
@@ -387,12 +459,18 @@ async function loadWidget(link) {
     }
 }
 
-// Función para cargar widget de Facebook (implementación correcta con API Graph)
+// Función para cargar widget de Facebook (implementación correcta según documentación oficial)
 async function loadFacebookWidget(link, container) {
     console.log('🔍 [FB DEBUG] Iniciando carga de Facebook widget para:', link.url);
     
+    // Mostrar indicador de carga inicial
+    showFacebookLoading(container);
+    
+    // Esperar un momento para que se vea el indicador
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
     try {
-        // Extraer el ID del post de Facebook
+        // Extraer el ID del post de Facebook (validación básica)
         const postId = extractFacebookPostId(link.url);
         console.log('🔍 [FB DEBUG] Post ID extraído:', postId);
         
@@ -404,24 +482,42 @@ async function loadFacebookWidget(link, container) {
         console.log('🔍 [FB DEBUG] Estado del SDK:', {
             facebookSDKReady: appState.facebookSDKReady,
             windowFB: !!window.FB,
-            windowFBXFBML: !!(window.FB && window.FB.XFBML)
+            windowFBXFBML: !!(window.FB && window.FB.XFBML),
+            appStateExists: !!window.appState
         });
         
-        // Crear el widget de Facebook usando el SDK oficial
-        // Implementación exacta según documentación oficial (sin data-width)
-        const fbHTML = `<div class="fb-post" data-href="${link.url}"></div>`;
+        // Crear el widget de Facebook usando la estructura oficial
+        // Según documentación: https://developers.facebook.com/docs/plugins/post/
+        const fbHTML = `
+            <div class="fb-post" 
+                 data-href="${link.url}" 
+                 data-width="500" 
+                 data-show-text="true">
+                <!-- Contenido de respaldo mientras carga el widget -->
+                <blockquote cite="${link.url}" class="fb-xfbml-parse-ignore">
+                    <p>Cargando publicación de Facebook...</p>
+                    <a href="${link.url}" target="_blank" rel="noopener noreferrer">Ver publicación original</a>
+                </blockquote>
+            </div>
+        `;
         
-        console.log('🔍 [FB DEBUG] HTML generado:', fbHTML);
+        console.log('🔍 [FB DEBUG] HTML generado con estructura oficial');
         container.innerHTML = fbHTML;
         
-        // Si el SDK ya está listo, parsear inmediatamente
-        if (appState.facebookSDKReady && window.FB && window.FB.XFBML) {
+        // Manejo inteligente del parsing según el estado del SDK
+        const sdkReady = (appState.facebookSDKReady || window.appState?.facebookSDKReady) && window.FB && window.FB.XFBML;
+        
+        if (sdkReady) {
             console.log('✅ [FB DEBUG] SDK listo, parseando inmediatamente');
             try {
+                // Usar FB.XFBML.parse() en el contenedor específico
                 window.FB.XFBML.parse(container);
                 console.log('✅ [FB DEBUG] FB.XFBML.parse() ejecutado exitosamente');
             } catch (parseError) {
                 console.error('❌ [FB DEBUG] Error en FB.XFBML.parse():', parseError);
+                // En caso de error, mostrar fallback
+                showFacebookFallback(link, container);
+                return;
             }
         } else {
             console.log('⏳ [FB DEBUG] SDK no listo, marcando como pendiente');
@@ -429,81 +525,63 @@ async function loadFacebookWidget(link, container) {
             const fbPost = container.querySelector('.fb-post');
             if (fbPost) {
                 fbPost.setAttribute('data-pending', 'true');
-                console.log('✅ [FB DEBUG] Marcado como pendiente');
+                console.log('✅ [FB DEBUG] Marcado como pendiente para procesamiento posterior');
             }
         }
         
-        // Verificar si el widget se cargó correctamente después de 10 segundos
-        // (tiempo extendido para permitir carga completa)
+        // Verificación de carga del widget (solo verificamos la presencia del iframe, no su contenido por CORS)
         setTimeout(() => {
-            console.log('🔍 [FB DEBUG] Verificando estado después de 10 segundos...');
+            console.log('🔍 [FB DEBUG] Verificando estado después de 8 segundos...');
             
             const fbPost = container.querySelector('.fb-post');
             const iframe = container.querySelector('iframe');
-            const allElements = container.querySelectorAll('*');
             
             console.log('🔍 [FB DEBUG] Elementos encontrados:', {
                 fbPost: !!fbPost,
                 iframe: !!iframe,
-                iframeDisplay: iframe ? iframe.style.display : 'no iframe',
                 iframeHeight: iframe ? iframe.offsetHeight : 'no iframe',
-                totalElements: allElements.length,
-                containerHTML: container.innerHTML.substring(0, 200) + '...'
+                iframeWidth: iframe ? iframe.offsetWidth : 'no iframe',
+                iframeDisplay: iframe ? iframe.style.display : 'no iframe',
+                containerChildren: container.children.length
             });
             
+            // Verificación simple: solo revisar si existe el iframe y tiene dimensiones razonables
+            // NO intentamos acceder al contenido del iframe por restricciones CORS
             if (!iframe || iframe.style.display === 'none' || iframe.offsetHeight < 100) {
                 console.log('❌ [FB DEBUG] Widget no se cargó correctamente, mostrando fallback');
-                console.log('🔍 [FB DEBUG] Razón del fallo:', {
-                    noIframe: !iframe,
-                    displayNone: iframe ? iframe.style.display === 'none' : false,
-                    heightLow: iframe ? iframe.offsetHeight < 100 : false,
+                console.log('🔍 [FB DEBUG] Criterios de verificación:', {
+                    iframeExists: !!iframe,
+                    notHidden: iframe ? iframe.style.display !== 'none' : false,
+                    hasMinHeight: iframe ? iframe.offsetHeight >= 100 : false,
                     actualHeight: iframe ? iframe.offsetHeight : 'no iframe'
                 });
-                handleCORSError('facebook', link, container);
+                // Mostrar contenido de respaldo cuando el widget falla
+                showFacebookFallback(link, container);
             } else {
                 console.log('✅ [FB DEBUG] Facebook widget cargado exitosamente');
-                console.log('🔍 [FB DEBUG] Iframe info:', {
+                console.log('🔍 [FB DEBUG] Iframe características:', {
                     width: iframe.offsetWidth,
                     height: iframe.offsetHeight,
-                    src: iframe.src
+                    visible: iframe.style.display !== 'none'
                 });
                 
-                // Verificar si el contenido dentro del iframe indica que el post no está disponible
-                setTimeout(() => {
-                    try {
-                        // Intentar acceder al contenido del iframe (puede fallar por CORS)
-                        const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-                        const iframeText = iframeDoc.body ? iframeDoc.body.textContent : '';
-                        
-                        if (iframeText.includes('no longer available') || 
-                            iframeText.includes('ya no está disponible') ||
-                            iframeText.includes('eliminado') ||
-                            iframeText.includes('privacidad')) {
-                            
-                            console.log('⚠️ [FB DEBUG] Post no disponible detectado en iframe');
-                            showFacebookPostUnavailable(link, container);
-                        } else {
-                            console.log('✅ [FB DEBUG] Post disponible y accesible');
-                        }
-                    } catch (iframeError) {
-                        console.log('🔍 [FB DEBUG] No se puede acceder al contenido del iframe (CORS):', iframeError.message);
-                        // Si no podemos acceder al contenido, asumimos que está bien
-                        console.log('✅ [FB DEBUG] Widget cargado, contenido no verificable por CORS');
-                    }
-                }, 2000); // Esperar 2 segundos más para que el contenido se cargue
+                // NOTA IMPORTANTE: No intentamos acceder al contenido del iframe
+                // debido a las restricciones de CORS. Esto es normal y esperado.
+                console.log('ℹ️ [FB DEBUG] Contenido del iframe no verificable por políticas CORS (esto es normal)');
                 
                 // Remover el indicador de carga si existe
-                const loadingOverlay = container.querySelector('.fb-post[data-pending="true"]');
-                if (loadingOverlay) {
-                    loadingOverlay.removeAttribute('data-pending');
+                const loadingElement = container.querySelector('.fb-post[data-pending="true"]');
+                if (loadingElement) {
+                    loadingElement.removeAttribute('data-pending');
                     console.log('✅ [FB DEBUG] Removido indicador de carga');
                 }
             }
-        }, 10000);
+        }, 8000); // Reducido a 8 segundos para mejor experiencia de usuario
         
     } catch (error) {
         console.error('❌ [FB DEBUG] Error en loadFacebookWidget:', error);
-        handleCORSError('facebook', link, container);
+        // En caso de error, mostrar fallback en lugar de manejar como error CORS
+        showFacebookFallback(link, container);
     }
 }
 
@@ -914,15 +992,42 @@ function handleCORSError(platform, link, container) {
     }
 }
 
-// Función para verificar si una URL es accesible (sin CORS)
-async function checkURLAccessibility(url) {
-    try {
-        const response = await fetch(url, {
-            method: 'HEAD',
-            mode: 'no-cors'
-        });
-        return true;
-    } catch (error) {
-        return false;
-    }
-} 
+// Función para mostrar indicador de carga específico para Facebook
+function showFacebookLoading(container) {
+    const loadingHTML = `
+        <div class="facebook-loading" style="
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            text-align: center;
+            color: #6c757d;
+        ">
+            <div>
+                <div style="
+                    width: 40px;
+                    height: 40px;
+                    border: 3px solid #1877f2;
+                    border-top: 3px solid transparent;
+                    border-radius: 50%;
+                    animation: spin 1s linear infinite;
+                    margin: 0 auto 12px;
+                "></div>
+                <p><i class="fab fa-facebook" style="color: #1877f2; margin-right: 8px;"></i>Cargando widget de Facebook...</p>
+                <small style="color: #999; margin-top: 8px; display: block;">
+                    Si el widget no carga, puede deberse a restricciones en localhost
+                </small>
+            </div>
+        </div>
+        <style>
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        </style>
+    `;
+    container.innerHTML = loadingHTML;
+}

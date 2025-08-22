@@ -17,7 +17,49 @@
 </head>
 <body>
     <!-- Facebook SDK según documentación oficial -->
+    <!-- Elemento requerido para el SDK de Facebook -->
     <div id="fb-root"></div>
+    
+    <!-- Script de inicialización del Facebook SDK -->
+    <!-- IMPORTANTE: Reemplazar 'TU_APP_ID' con tu App ID real de Facebook -->
+    <script>
+        window.fbAsyncInit = function() {
+            console.log('🚀 [FB SDK] fbAsyncInit iniciado');
+            
+            FB.init({
+                appId: 'TU_APP_ID', // Reemplazar con tu App ID de Facebook
+                cookie: true,
+                xfbml: true,
+                version: 'v19.0' // Versión más reciente estable del SDK
+            });
+            
+            console.log('✅ [FB SDK] Facebook SDK inicializado correctamente');
+            
+            // Marcar el SDK como listo globalmente
+            if (window.appState) {
+                window.appState.facebookSDKReady = true;
+                console.log('✅ [FB SDK] Estado actualizado en appState');
+            } else {
+                // Si appState no existe aún, crearlo
+                window.appState = { facebookSDKReady: true };
+                console.log('✅ [FB SDK] appState creado con SDK listo');
+            }
+            
+            // Procesar widgets pendientes
+            if (window.processPendingFacebookWidgets) {
+                console.log('🔄 [FB SDK] Procesando widgets pendientes...');
+                window.processPendingFacebookWidgets();
+            } else {
+                console.log('ℹ️ [FB SDK] processPendingFacebookWidgets no disponible aún');
+            }
+            
+            // Parsear widgets estáticos que ya están en el DOM
+            console.log('🔄 [FB SDK] Parseando widgets estáticos...');
+            FB.XFBML.parse();
+        };
+    </script>
+    
+    <!-- Cargar el SDK de Facebook de forma asíncrona -->
     <script async defer crossorigin="anonymous" src="https://connect.facebook.net/es_LA/sdk.js"></script>
     
     <div class="container">
@@ -84,6 +126,37 @@
 
                 <div class="results-container" id="resultsContainer">
                     <!-- Los resultados se insertarán aquí dinámicamente -->
+                </div>
+            </section>
+            
+            <!-- Sección de demostración del widget de Facebook -->
+            <section class="demo-section" id="demoSection" style="margin: 2rem 0; padding: 2rem; background: #f8f9fa; border-radius: 12px;">
+                <h3><i class="fab fa-facebook"></i> Widget de Demostración - Facebook</h3>
+                <p>Ejemplo de integración oficial del widget de Facebook:</p>
+                
+                <!-- Widget oficial de Facebook según documentación -->
+                <!-- URL de ejemplo proporcionada por el usuario -->
+                <div class="fb-post" 
+                     data-href="https://www.facebook.com/20531316728/posts/10154009990506729/" 
+                     data-width="500" 
+                     data-show-text="true">
+                    <!-- Fallback para cuando el SDK no está disponible -->
+                    <blockquote cite="https://www.facebook.com/20531316728/posts/10154009990506729/" class="fb-xfbml-parse-ignore">
+                        <p>Cargando publicación de Facebook...</p>
+                        <a href="https://www.facebook.com/20531316728/posts/10154009990506729/">Ver publicación original</a>
+                    </blockquote>
+                </div>
+                
+                <p style="margin-top: 1rem; font-size: 0.9em; color: #666;">
+                    <strong>Nota:</strong> Si estás probando en localhost (127.0.0.1), el widget podría no cargar debido a restricciones de Facebook. 
+                    Prueba en un servidor de producción o usando ngrok/similar para mejores resultados.
+                </p>
+                
+                <!-- Botón para re-procesar widgets pendientes -->
+                <div style="margin-top: 1rem;">
+                    <button id="reprocessFBWidgets" class="btn btn-secondary" style="font-size: 0.9em; padding: 8px 16px;">
+                        <i class="fas fa-sync-alt"></i> Re-procesar Widgets FB
+                    </button>
                 </div>
             </section>
         </main>
