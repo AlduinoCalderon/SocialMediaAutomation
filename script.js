@@ -5,21 +5,21 @@ const CONFIG = {
             name: 'Facebook',
             icon: 'fab fa-facebook',
             color: '#1877f2',
-            urlPattern: /(?:https?:\/\/)?(?:www\.)?facebook\.com\/(?:share\/p\/|permalink\.php\?story_fbid=|.*?\/posts\/|.*?\/photos\/|.*?\/videos\/)([^\/\?]+)/i,
+            urlPattern: /(?:https?:\/\/)?(?:www\.)?facebook\.com\/[^\s]+/i,
             embedUrl: 'https://www.facebook.com/plugins/post.php'
         },
         instagram: {
             name: 'Instagram',
             icon: 'fab fa-instagram',
             color: '#e4405f',
-            urlPattern: /(?:https?:\/\/)?(?:www\.)?instagram\.com\/p\/([^\/\?]+)/i,
+            urlPattern: /(?:https?:\/\/)?(?:www\.)?instagram\.com\/[^\s]+/i,
             embedUrl: 'https://www.instagram.com/p/'
         },
         twitter: {
             name: 'X/Twitter',
             icon: 'fab fa-x-twitter',
             color: '#000000',
-            urlPattern: /(?:https?:\/\/)?(?:www\.)?(?:x\.com|twitter\.com)\/([^\/]+)\/status\/([^\/\?]+)/i,
+            urlPattern: /(?:https?:\/\/)?(?:www\.)?(?:x\.com|twitter\.com)\/[^\s]+/i,
             embedUrl: 'https://platform.twitter.com/widgets.js'
         }
     }
@@ -29,7 +29,9 @@ const CONFIG = {
 let appState = {
     links: [],
     currentFilter: 'all',
-    isLoading: false
+    isLoading: false,
+    facebookSDKReady: false,
+    twitterSDKReady: false
 };
 
 // Elementos del DOM
@@ -42,6 +44,24 @@ const elements = {
     totalCount: document.getElementById('totalCount'),
     validCount: document.getElementById('validCount'),
     filterBtns: document.querySelectorAll('.filter-btn')
+};
+
+// Inicialización del SDK de Facebook según documentación oficial
+window.fbAsyncInit = function() {
+    FB.init({
+        xfbml: true,
+        version: 'v18.0'
+    });
+    
+    appState.facebookSDKReady = true;
+    console.log('Facebook SDK inicializado correctamente');
+    
+    // Procesar cualquier widget de Facebook pendiente
+    const pendingFacebookWidgets = document.querySelectorAll('.fb-post[data-pending="true"]');
+    pendingFacebookWidgets.forEach(widget => {
+        widget.removeAttribute('data-pending');
+        FB.XFBML.parse(widget.parentElement);
+    });
 };
 
 // Inicialización de la aplicación
@@ -67,6 +87,119 @@ function initializeApp() {
     if (!elements.linkInput.value.trim()) {
         loadExample();
     }
+
+    // Agregar botón de volver arriba
+    addScrollToTopButton();
+    
+    // Agregar botón de copiar texto
+    addCopyTextButton();
+    
+    // Scroll listener para mostrar/ocultar botón volver arriba
+    window.addEventListener('scroll', handleScroll);
+    
+    // Verificar estado de SDKs después de 3 segundos
+    setTimeout(checkSDKStatus, 3000);
+}
+
+// Función para verificar el estado de los SDKs
+function checkSDKStatus() {
+    console.log('Estado de SDKs:');
+    console.log('- Facebook SDK:', appState.facebookSDKReady ? 'Listo' : 'No disponible');
+    console.log('- Twitter SDK:', appState.twitterSDKReady ? 'Listo' : 'No disponible');
+    
+    if (!appState.facebookSDKReady) {
+        console.warn('Facebook SDK no se ha inicializado. Usando fallbacks.');
+    }
+}
+
+// Función para agregar botón de volver arriba
+function addScrollToTopButton() {
+    const scrollBtn = document.createElement('button');
+    scrollBtn.id = 'scrollToTopBtn';
+    scrollBtn.className = 'scroll-to-top-btn';
+    scrollBtn.innerHTML = '<i class="fas fa-arrow-up"></i>';
+    scrollBtn.style.display = 'none';
+    
+    scrollBtn.addEventListener('click', () => {
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
+    });
+    
+    document.body.appendChild(scrollBtn);
+}
+
+// Función para agregar botón de copiar texto
+function addCopyTextButton() {
+    const copyBtn = document.createElement('button');
+    copyBtn.id = 'copyTextBtn';
+    copyBtn.className = 'copy-text-btn';
+    copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copiar Texto';
+    
+    copyBtn.addEventListener('click', copyInputText);
+    
+    // Insertar después del botón limpiar
+    const buttonGroup = document.querySelector('.button-group');
+    buttonGroup.appendChild(copyBtn);
+}
+
+// Función para copiar texto de entrada
+async function copyInputText() {
+    const text = elements.linkInput.value;
+    if (!text.trim()) {
+        showNotification('No hay texto para copiar', 'warning');
+        return;
+    }
+    
+    try {
+        await navigator.clipboard.writeText(text);
+        showNotification('Texto copiado al portapapeles', 'success');
+    } catch (err) {
+        // Fallback para navegadores que no soportan clipboard API
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        showNotification('Texto copiado al portapapeles', 'success');
+    }
+}
+
+// Función para mostrar notificaciones
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check' : type === 'warning' ? 'exclamation-triangle' : 'info'}"></i>
+        <span>${message}</span>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Mostrar con animación
+    setTimeout(() => {
+        notification.classList.add('show');
+    }, 100);
+    
+    // Ocultar después de 3 segundos
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => {
+            document.body.removeChild(notification);
+        }, 300);
+    }, 3000);
+}
+
+// Función para manejar scroll
+function handleScroll() {
+    const scrollBtn = document.getElementById('scrollToTopBtn');
+    if (window.scrollY > 300) {
+        scrollBtn.style.display = 'flex';
+    } else {
+        scrollBtn.style.display = 'none';
+    }
 }
 
 // Función principal para analizar enlaces
@@ -81,12 +214,20 @@ async function analyzeLinks() {
     setLoading(true);
     
     try {
-        const parsedLinks = parseLinks(input);
+        const parsedLinks = extraerEnlaces(input);
         appState.links = parsedLinks;
         
         updateStats();
         displayResults();
         setLoading(false);
+        
+        // Scroll automático a resultados
+        setTimeout(() => {
+            elements.resultsSection.scrollIntoView({ 
+                behavior: 'smooth',
+                block: 'start'
+            });
+        }, 500);
         
         // Cargar widgets después de mostrar los resultados
         await loadWidgets();
@@ -98,66 +239,55 @@ async function analyzeLinks() {
     }
 }
 
-// Función para parsear el texto de entrada
-function parseLinks(input) {
-    const lines = input.split('\n').map(line => line.trim()).filter(line => line);
-    const links = [];
-    let currentGroup = '';
-    let currentTitle = '';
-    
-    for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        
-        // Detectar grupos (líneas que contienen "Titular", "Setrao", etc.)
-        if (line.toLowerCase().includes('titular') || 
-            line.toLowerCase().includes('setrao') ||
-            line.toLowerCase().includes('facebook') ||
-            line.toLowerCase().includes('instagram') ||
-            line.toLowerCase().includes('x') ||
-            line.toLowerCase().includes('twitter')) {
-            
-            // Si la línea anterior era una URL, usar esa línea como título
-            if (i > 0 && isUrl(lines[i - 1])) {
-                currentTitle = line;
-            } else {
-                currentGroup = line;
-                currentTitle = line;
-            }
-            continue;
-        }
-        
-        // Detectar URLs
-        if (isUrl(line)) {
-            const platform = detectPlatform(line);
-            if (platform) {
-                links.push({
-                    url: line,
-                    platform: platform,
-                    group: currentGroup,
-                    title: currentTitle,
-                    id: generateId()
-                });
-            }
-        }
-    }
-    
-    return links;
+// Función robusta para limpiar texto (del linkAnalizer.js)
+function limpiarTexto(texto) {
+    // Elimina negritas (*, **), espacios extra y caracteres invisibles
+    return texto.replace(/\*{1,2}([^*]+)\*{1,2}/g, '$1')
+                .replace(/[\u200B-\u200D\uFEFF]/g, '') // zero-width chars
+                .replace(/\s+/g, ' ')
+                .trim();
 }
 
-// Función para detectar si una línea es una URL
-function isUrl(text) {
-    const urlPattern = /^https?:\/\/.+/i;
-    return urlPattern.test(text);
+// Función para limpiar enlaces (del linkAnalizer.js)
+function limpiarEnlace(enlace) {
+    // Elimina separadores o caracteres finales que no sean parte del enlace
+    return enlace.replace(/[\?\.\)\]\}]+$/, '');
 }
 
-// Función para detectar la plataforma de un enlace
-function detectPlatform(url) {
-    for (const [key, platform] of Object.entries(CONFIG.platforms)) {
-        if (platform.urlPattern.test(url)) {
-            return key;
-        }
+// Función principal para extraer enlaces (del linkAnalizer.js)
+function extraerEnlaces(texto) {
+    // Expresión regular para Facebook, Instagram, X/Twitter, tolerante a errores
+    const regex = /(?:Facebook|Instagram|X|Twitter)\s*([^\n]*?)\s*(https?:\/\/(?:www\.|m\.)?(?:facebook\.com\/[^\s]+|instagram\.com\/[^\s]+|x\.com\/[^\s]+|twitter\.com\/[^\s]+)[^\s]*)/gi;
+    const resultados = [];
+    let match;
+    
+    while ((match = regex.exec(texto)) !== null) {
+        // Obtén red social desde la coincidencia
+        const grupoRed = /Facebook|Instagram|X|Twitter/i.exec(match[0]);
+        const red = grupoRed ? grupoRed[0].charAt(0).toUpperCase() + grupoRed[0].slice(1).toLowerCase() : "Red";
+        
+        // Titular: lo que está entre la red y el enlace
+        let titular = limpiarTexto(match[1]);
+        if (!titular) titular = red + " Publicación";
+        
+        const url = limpiarEnlace(match[2]);
+        
+        // Determinar plataforma
+        let platform = 'unknown';
+        if (url.includes('facebook.com')) platform = 'facebook';
+        else if (url.includes('instagram.com')) platform = 'instagram';
+        else if (url.includes('x.com') || url.includes('twitter.com')) platform = 'twitter';
+        
+        resultados.push({
+            url: url,
+            platform: platform,
+            group: titular,
+            title: titular,
+            id: generateId()
+        });
     }
-    return null;
+    
+    return resultados;
 }
 
 // Función para generar ID único
@@ -175,6 +305,7 @@ function displayResults() {
             <div class="loading">
                 <i class="fas fa-exclamation-triangle"></i>
                 <p>No se encontraron enlaces válidos en el texto ingresado.</p>
+                <p class="help-text">Asegúrate de que el formato sea: "Facebook Titular" seguido de la URL</p>
             </div>
         `;
         return;
@@ -253,33 +384,96 @@ async function loadWidget(link) {
     }
 }
 
-// Función para cargar widget de Facebook
+// Función para cargar widget de Facebook (mejorada con la documentación oficial)
 async function loadFacebookWidget(link, container) {
-    const match = link.url.match(CONFIG.platforms.facebook.urlPattern);
-    if (!match) {
-        throw new Error('URL de Facebook no válida');
+    try {
+        // Limpiar URL para mejor compatibilidad
+        const cleanUrl = link.url.split('?')[0];
+        
+        // Convertir URLs de share a URLs de post normales si es necesario
+        let facebookUrl = cleanUrl;
+        if (cleanUrl.includes('/share/p/')) {
+            const shareMatch = cleanUrl.match(/\/share\/p\/([^\/\?]+)/);
+            if (shareMatch) {
+                const postId = shareMatch[1];
+                // Intentar múltiples formatos de URL
+                const urlFormats = [
+                    `https://www.facebook.com/permalink.php?story_fbid=${postId}`,
+                    `https://www.facebook.com/posts/${postId}`,
+                    cleanUrl // Como último recurso, usar la URL original
+                ];
+                facebookUrl = urlFormats[0]; // Usar el primer formato
+            }
+        }
+        
+        // Crear el widget de Facebook usando el SDK oficial
+        container.innerHTML = `
+            <div class="fb-post" 
+                 data-href="${facebookUrl}" 
+                 data-width="500" 
+                 data-show-text="true"
+                 ${!appState.facebookSDKReady ? 'data-pending="true"' : ''}>
+            </div>
+        `;
+        
+        // Si el SDK ya está listo, parsear inmediatamente
+        if (appState.facebookSDKReady && window.FB && window.FB.XFBML) {
+            window.FB.XFBML.parse(container);
+        }
+        
+        // Verificar si el widget se cargó correctamente después de 6 segundos
+        setTimeout(() => {
+            const fbPost = container.querySelector('.fb-post');
+            const iframe = container.querySelector('iframe');
+            
+            if (!iframe || iframe.style.display === 'none' || iframe.offsetHeight < 100) {
+                console.log('Facebook widget no se cargó correctamente, mostrando fallback');
+                showFacebookFallback(link, container);
+            } else {
+                console.log('Facebook widget cargado exitosamente');
+            }
+        }, 6000);
+        
+    } catch (error) {
+        console.error('Facebook widget error:', error);
+        showFacebookFallback(link, container);
     }
-    
-    const postId = match[1];
-    const embedUrl = `${CONFIG.platforms.facebook.embedUrl}?href=${encodeURIComponent(link.url)}&show_text=true&width=550`;
-    
+}
+
+// Función para mostrar fallback de Facebook
+function showFacebookFallback(link, container) {
     container.innerHTML = `
-        <iframe 
-            src="${embedUrl}"
-            width="550" 
-            height="400" 
-            style="border:none;overflow:hidden" 
-            scrolling="no" 
-            frameborder="0" 
-            allowfullscreen="true" 
-            allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share">
-        </iframe>
+        <div class="facebook-preview">
+            <div class="social-preview-header">
+                <div class="platform-icon facebook">
+                    <i class="fab fa-facebook"></i>
+                </div>
+                <div class="preview-info">
+                    <h4>Publicación de Facebook</h4>
+                    <p>${link.title}</p>
+                    <span class="preview-status">Widget no disponible - Ver contenido original</span>
+                </div>
+            </div>
+            <div class="preview-content">
+                <div class="preview-placeholder">
+                    <i class="fab fa-facebook"></i>
+                    <p>Contenido de Facebook</p>
+                    <span class="preview-note">Esta publicación está disponible en Facebook</span>
+                </div>
+            </div>
+            <div class="preview-actions">
+                <a href="${link.url}" target="_blank" class="btn btn-primary">
+                    <i class="fab fa-facebook"></i> Ver en Facebook
+                </a>
+            </div>
+        </div>
     `;
 }
 
-// Función para cargar widget de Instagram
+// Función para cargar widget de Instagram (mantener como está)
 async function loadInstagramWidget(link, container) {
-    const match = link.url.match(CONFIG.platforms.instagram.urlPattern);
+    // Extraer el ID del post de Instagram
+    const match = link.url.match(/instagram\.com\/p\/([^\/\?]+)/);
     if (!match) {
         throw new Error('URL de Instagram no válida');
     }
@@ -290,52 +484,172 @@ async function loadInstagramWidget(link, container) {
     container.innerHTML = `
         <iframe 
             src="${embedUrl}"
-            width="400" 
+            width="100%" 
             height="480" 
             frameborder="0" 
             scrolling="no" 
-            allowtransparency="true">
+            allowtransparency="true"
+            style="border-radius:8px;">
         </iframe>
     `;
 }
 
-// Función para cargar widget de Twitter/X
+// Función para cargar widget de Twitter/X (mejorada con oEmbed API)
 async function loadTwitterWidget(link, container) {
-    const match = link.url.match(CONFIG.platforms.twitter.urlPattern);
-    if (!match) {
-        throw new Error('URL de Twitter no válida');
+    try {
+        // Extraer información del tweet
+        const tweetMatch = link.url.match(/(?:x\.com|twitter\.com)\/([^\/]+)\/status\/([^\/\?\s]+)/);
+        
+        if (tweetMatch) {
+            const username = tweetMatch[1];
+            const tweetId = tweetMatch[2];
+            
+            // Método 1: Intentar con oEmbed API
+            try {
+                const oembedUrl = `https://publish.twitter.com/oembed?url=${encodeURIComponent(link.url)}&theme=light&dnt=true&hide_thread=true&hide_media=false&align=center&maxwidth=500`;
+                
+                const response = await fetch(oembedUrl);
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    container.innerHTML = `
+                        <div class="twitter-oembed-container">
+                            ${data.html}
+                        </div>
+                    `;
+                    
+                    // Cargar Twitter Widgets SDK si no está disponible
+                    await ensureTwitterSDK();
+                    
+                    // Renderizar el tweet
+                    if (window.twttr && window.twttr.widgets) {
+                        await window.twttr.widgets.load(container);
+                    }
+                    
+                    console.log('Twitter widget cargado con oEmbed API');
+                    return;
+                }
+            } catch (oembedError) {
+                console.log('oEmbed API falló, intentando método tradicional:', oembedError);
+            }
+            
+            // Método 2: Fallback con método tradicional
+            container.innerHTML = `
+                <div class="twitter-widget-container">
+                    <blockquote class="twitter-tweet" 
+                                data-theme="light" 
+                                data-dnt="true" 
+                                data-lang="es"
+                                data-conversation="none"
+                                data-cards="visible"
+                                data-align="center">
+                        <a href="${link.url}"></a>
+                    </blockquote>
+                </div>
+            `;
+            
+            // Cargar el widget con Twitter SDK
+            await ensureTwitterSDK();
+            
+            if (window.twttr && window.twttr.widgets) {
+                await window.twttr.widgets.load(container);
+            }
+            
+            // Verificar si se cargó correctamente después de 5 segundos
+            setTimeout(() => {
+                const tweetRendered = container.querySelector('.twitter-tweet-rendered');
+                const iframe = container.querySelector('iframe');
+                
+                if (!tweetRendered && !iframe) {
+                    console.log('Twitter widget no se cargó, mostrando fallback');
+                    showTwitterFallback(link, container, username);
+                } else {
+                    console.log('Twitter widget cargado exitosamente');
+                }
+            }, 5000);
+        } else {
+            throw new Error('No se pudo extraer información del tweet');
+        }
+        
+    } catch (error) {
+        console.error('Twitter widget error:', error);
+        const username = link.url.match(/(?:x\.com|twitter\.com)\/([^\/]+)/)?.[1] || 'usuario';
+        showTwitterFallback(link, container, username);
+    }
+}
+
+// Función para asegurar que Twitter SDK esté cargado
+async function ensureTwitterSDK() {
+    if (appState.twitterSDKReady) {
+        return;
     }
     
-    const username = match[1];
-    const tweetId = match[2];
-    
-    // Crear elemento para el tweet
-    const tweetElement = document.createElement('div');
-    tweetElement.className = 'twitter-tweet';
-    tweetElement.innerHTML = `
-        <blockquote class="twitter-tweet">
-            <a href="${link.url}"></a>
-        </blockquote>
-    `;
-    
-    container.innerHTML = '';
-    container.appendChild(tweetElement);
-    
-    // Cargar script de Twitter si no está cargado
-    if (!window.twttr) {
+    return new Promise((resolve) => {
+        if (window.twttr) {
+            appState.twitterSDKReady = true;
+            resolve();
+            return;
+        }
+        
         const script = document.createElement('script');
-        script.src = CONFIG.platforms.twitter.embedUrl;
+        script.src = 'https://platform.twitter.com/widgets.js';
         script.async = true;
-        document.head.appendChild(script);
+        script.charset = 'utf-8';
         
         script.onload = () => {
-            if (window.twttr && window.twttr.widgets) {
-                window.twttr.widgets.load(container);
-            }
+            const checkTwttr = setInterval(() => {
+                if (window.twttr && window.twttr.widgets) {
+                    clearInterval(checkTwttr);
+                    appState.twitterSDKReady = true;
+                    console.log('Twitter SDK cargado exitosamente');
+                    resolve();
+                }
+            }, 100);
+            
+            setTimeout(() => {
+                clearInterval(checkTwttr);
+                console.log('Twitter SDK timeout, continuando...');
+                resolve();
+            }, 10000);
         };
-    } else {
-        window.twttr.widgets.load(container);
-    }
+        
+        script.onerror = () => {
+            console.log('Error cargando Twitter SDK');
+            resolve();
+        };
+        
+        document.head.appendChild(script);
+    });
+}
+
+// Función para mostrar fallback de Twitter
+function showTwitterFallback(link, container, username) {
+    container.innerHTML = `
+        <div class="twitter-preview">
+            <div class="social-preview-header">
+                <div class="platform-icon twitter">
+                    <i class="fab fa-x-twitter"></i>
+                </div>
+                <div class="preview-info">
+                    <h4>Tweet de @${username}</h4>
+                    <p>${link.title}</p>
+                    <span class="preview-status">Widget no disponible - Ver contenido original</span>
+                </div>
+            </div>
+            <div class="preview-content">
+                <div class="preview-placeholder">
+                    <i class="fab fa-x-twitter"></i>
+                    <p>Contenido de X/Twitter</p>
+                    <span class="preview-note">Este tweet está disponible en X/Twitter</span>
+                </div>
+            </div>
+            <div class="preview-actions">
+                <a href="${link.url}" target="_blank" class="btn btn-primary">
+                    <i class="fab fa-x-twitter"></i> Ver en X/Twitter
+                </a>
+            </div>
+        </div>
+    `;
 }
 
 // Función para filtrar enlaces por plataforma

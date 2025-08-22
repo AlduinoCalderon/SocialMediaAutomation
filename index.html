@@ -2,13 +2,24 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="SETRAO Links">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#667eea">
+    <meta name="msapplication-TileColor" content="#667eea">
     <title>Analizador de Enlaces SETRAO</title>
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔗</text></svg>">
 </head>
 <body>
+    <!-- Facebook SDK -->
+    <div id="fb-root"></div>
+    <script async defer crossorigin="anonymous" src="https://connect.facebook.net/es_LA/sdk.js#xfbml=1&version=v18.0"></script>
+    
     <div class="container">
         <header class="header">
             <div class="header-content">
@@ -25,7 +36,11 @@
                         <textarea 
                             id="linkInput" 
                             placeholder="Pega aquí la lista de enlaces...&#10;&#10;Ejemplo:&#10;Viernes 22 de agosto&#10;&#10;Facebook Titular&#10;https://www.facebook.com/share/p/14JZkDVzxbL/&#10;&#10;Instagram Titular&#10;https://www.instagram.com/p/DNqt0o-O2oy/&#10;&#10;X Titular&#10;https://x.com/editsantibanez/status/1958959222055374946?s"
-                            rows="15"
+                            rows="12"
+                            autocomplete="off"
+                            autocorrect="off"
+                            autocapitalize="off"
+                            spellcheck="false"
                         ></textarea>
                         <div class="button-group">
                             <button id="analyzeBtn" class="btn btn-primary">
