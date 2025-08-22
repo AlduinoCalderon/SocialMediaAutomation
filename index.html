@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analizador de Enlaces SETRAO</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-content">
+                <h1><i class="fas fa-link"></i> Analizador de Enlaces SETRAO</h1>
+                <p>Herramienta para verificar publicaciones en redes sociales</p>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <section class="input-section">
+                <div class="input-container">
+                    <h2><i class="fas fa-upload"></i> Ingresa los Enlaces</h2>
+                    <div class="input-group">
+                        <textarea 
+                            id="linkInput" 
+                            placeholder="Pega aquí la lista de enlaces...&#10;&#10;Ejemplo:&#10;Viernes 22 de agosto&#10;&#10;Facebook Titular&#10;https://www.facebook.com/share/p/14JZkDVzxbL/&#10;&#10;Instagram Titular&#10;https://www.instagram.com/p/DNqt0o-O2oy/&#10;&#10;X Titular&#10;https://x.com/editsantibanez/status/1958959222055374946?s"
+                            rows="15"
+                        ></textarea>
+                        <div class="button-group">
+                            <button id="analyzeBtn" class="btn btn-primary">
+                                <i class="fas fa-search"></i> Analizar Enlaces
+                            </button>
+                            <button id="clearBtn" class="btn btn-secondary">
+                                <i class="fas fa-trash"></i> Limpiar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="results-section" id="resultsSection" style="display: none;">
+                <div class="results-header">
+                    <h2><i class="fas fa-list"></i> Resultados del Análisis</h2>
+                    <div class="stats">
+                        <span id="totalLinks" class="stat-item">
+                            <i class="fas fa-link"></i> <span id="totalCount">0</span> enlaces
+                        </span>
+                        <span id="validLinks" class="stat-item">
+                            <i class="fas fa-check"></i> <span id="validCount">0</span> válidos
+                        </span>
+                    </div>
+                </div>
+
+                <div class="filters">
+                    <button class="filter-btn active" data-filter="all">
+                        <i class="fas fa-globe"></i> Todas
+                    </button>
+                    <button class="filter-btn" data-filter="facebook">
+                        <i class="fab fa-facebook"></i> Facebook
+                    </button>
+                    <button class="filter-btn" data-filter="instagram">
+                        <i class="fab fa-instagram"></i> Instagram
+                    </button>
+                    <button class="filter-btn" data-filter="twitter">
+                        <i class="fab fa-x-twitter"></i> X/Twitter
+                    </button>
+                </div>
+
+                <div class="results-container" id="resultsContainer">
+                    <!-- Los resultados se insertarán aquí dinámicamente -->
+                </div>
+            </section>
+        </main>
+
+        <footer class="footer">
+            <p>&copy; 2024 SETRAO - Comunicación Social</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html> 
