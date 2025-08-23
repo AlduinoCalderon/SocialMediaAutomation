@@ -172,6 +172,11 @@ function initializeApp() {
         if (typeof trackFacebookAppUsage === 'function') {
             trackFacebookAppUsage();
         }
+        
+        // Ejecutar diagnóstico específico para app publicada
+        if (typeof diagnoseFacebookAppIssues === 'function') {
+            diagnoseFacebookAppIssues();
+        }
     }, 7000);
     
     console.log('✅ [APP] Aplicación inicializada correctamente');
