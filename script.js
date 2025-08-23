@@ -40,6 +40,7 @@ const elements = {
     linkInput: document.getElementById('linkInput'),
     analyzeBtn: document.getElementById('analyzeBtn'),
     clearBtn: document.getElementById('clearBtn'),
+    copyTextBtn: document.getElementById('copyTextBtn'),
     resultsSection: document.getElementById('resultsSection'),
     resultsContainer: document.getElementById('resultsContainer'),
     totalCount: document.getElementById('totalCount'),
@@ -97,33 +98,7 @@ function initializeApp() {
     // Event listeners
     elements.analyzeBtn.addEventListener('click', analyzeLinks);
     elements.clearBtn.addEventListener('click', clearAll);
-    
-    // Event listener para re-procesar widgets de Facebook
-    const reprocessBtn = document.getElementById('reprocessFBWidgets');
-    if (reprocessBtn) {
-        reprocessBtn.addEventListener('click', () => {
-            console.log('🔄 [MANUAL] Reprocesando widgets de Facebook manualmente...');
-            
-            if (window.FB && window.FB.XFBML) {
-                // Re-parsear todos los widgets de Facebook
-                FB.XFBML.parse();
-                console.log('✅ [MANUAL] FB.XFBML.parse() ejecutado');
-                
-                // También procesar widgets pendientes
-                if (window.processPendingFacebookWidgets) {
-                    window.processPendingFacebookWidgets();
-                }
-                
-                // Feedback visual
-                reprocessBtn.innerHTML = '<i class="fas fa-check"></i> ¡Reprocesado!';
-                setTimeout(() => {
-                    reprocessBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Re-procesar Widgets FB';
-                }, 2000);
-            } else {
-                alert('El SDK de Facebook no está disponible aún. Intenta más tarde.');
-            }
-        });
-    }
+    elements.copyTextBtn.addEventListener('click', copyInputText);
     
     // Event listeners para filtros
     elements.filterBtns.forEach(btn => {
@@ -134,16 +109,10 @@ function initializeApp() {
         });
     });
 
-    // Cargar ejemplo si no hay contenido
-    if (!elements.linkInput.value.trim()) {
-        loadExample();
-    }
+    // No cargar ejemplo automáticamente - el usuario ingresa sus propios enlaces
 
     // Agregar botón de volver arriba
     addScrollToTopButton();
-    
-    // Agregar botón de copiar texto
-    addCopyTextButton();
     
     // Scroll listener para mostrar/ocultar botón volver arriba
     window.addEventListener('scroll', handleScroll);
@@ -206,20 +175,6 @@ function addScrollToTopButton() {
     });
     
     document.body.appendChild(scrollBtn);
-}
-
-// Función para agregar botón de copiar texto
-function addCopyTextButton() {
-    const copyBtn = document.createElement('button');
-    copyBtn.id = 'copyTextBtn';
-    copyBtn.className = 'copy-text-btn';
-    copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copiar Texto';
-    
-    copyBtn.addEventListener('click', copyInputText);
-    
-    // Insertar después del botón limpiar
-    const buttonGroup = document.querySelector('.button-group');
-    buttonGroup.appendChild(copyBtn);
 }
 
 // Función para copiar texto de entrada
@@ -910,6 +865,45 @@ function clearAll() {
     elements.filterBtns[0].classList.add('active');
 }
 
+// Función para copiar el texto del input al portapapeles
+async function copyInputText() {
+    const text = elements.linkInput.value;
+    
+    if (!text.trim()) {
+        showNotification('No hay texto para copiar', 'warning');
+        return;
+    }
+    
+    try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(text);
+            showNotification('Texto copiado al portapapeles', 'success');
+        } else {
+            // Fallback para navegadores que no soportan clipboard API
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            textArea.style.top = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            try {
+                document.execCommand('copy');
+                showNotification('Texto copiado al portapapeles', 'success');
+            } catch (err) {
+                showNotification('Error al copiar texto', 'error');
+            }
+            
+            document.body.removeChild(textArea);
+        }
+    } catch (err) {
+        console.error('Error al copiar texto:', err);
+        showNotification('Error al copiar texto', 'error');
+    }
+}
+
 // Función para establecer estado de carga
 function setLoading(loading) {
     appState.isLoading = loading;
@@ -938,30 +932,6 @@ function showError(message) {
 }
 
 // Función para cargar ejemplo
-function loadExample() {
-    const example = `Viernes 22 de agosto
-
-Facebook Titular 
-https://www.facebook.com/20531316728/posts/10154009990506729/
-
-Instagram Titular 
-https://www.instagram.com/p/DNqt0o-O2oy/
-
-X Titular 
-https://x.com/editsantibanez/status/1958959222055374946?s
-
-Facebook Setrao
-https://www.facebook.com/20531316728/posts/10154009990506729/
-
-Instagram Setrao 
-https://www.instagram.com/p/DNqwSmOy4qJ/
-
-X Setrao
-https://x.com/trabajo_goboax/status/1958958733725151477?`;
-    
-    elements.linkInput.value = example;
-}
-
 // Función para manejar errores globales
 window.addEventListener('error', function(e) {
     console.error('Error global:', e.error);

@@ -77,7 +77,7 @@
                     <div class="input-group">
                         <textarea 
                             id="linkInput" 
-                            placeholder="Pega aquí la lista de enlaces...&#10;&#10;Ejemplo:&#10;Viernes 22 de agosto&#10;&#10;Facebook Titular&#10;https://www.facebook.com/share/p/14JZkDVzxbL/&#10;&#10;Instagram Titular&#10;https://www.instagram.com/p/DNqt0o-O2oy/&#10;&#10;X Titular&#10;https://x.com/editsantibanez/status/1958959222055374946?s"
+                            placeholder="Ingresa tus enlaces aquí..."
                             rows="12"
                             autocomplete="off"
                             autocorrect="off"
@@ -90,6 +90,9 @@
                             </button>
                             <button id="clearBtn" class="btn btn-secondary">
                                 <i class="fas fa-trash"></i> Limpiar
+                            </button>
+                            <button id="copyTextBtn" class="btn btn-secondary">
+                                <i class="fas fa-copy"></i> Copiar Texto
                             </button>
                         </div>
                     </div>
@@ -126,37 +129,6 @@
 
                 <div class="results-container" id="resultsContainer">
                     <!-- Los resultados se insertarán aquí dinámicamente -->
-                </div>
-            </section>
-            
-            <!-- Sección de demostración del widget de Facebook -->
-            <section class="demo-section" id="demoSection" style="margin: 2rem 0; padding: 2rem; background: #f8f9fa; border-radius: 12px;">
-                <h3><i class="fab fa-facebook"></i> Widget de Demostración - Facebook</h3>
-                <p>Ejemplo de integración oficial del widget de Facebook:</p>
-                
-                <!-- Widget oficial de Facebook según documentación -->
-                <!-- URL de ejemplo proporcionada por el usuario -->
-                <div class="fb-post" 
-                     data-href="https://www.facebook.com/20531316728/posts/10154009990506729/" 
-                     data-width="500" 
-                     data-show-text="true">
-                    <!-- Fallback para cuando el SDK no está disponible -->
-                    <blockquote cite="https://www.facebook.com/20531316728/posts/10154009990506729/" class="fb-xfbml-parse-ignore">
-                        <p>Cargando publicación de Facebook...</p>
-                        <a href="https://www.facebook.com/20531316728/posts/10154009990506729/">Ver publicación original</a>
-                    </blockquote>
-                </div>
-                
-                <p style="margin-top: 1rem; font-size: 0.9em; color: #666;">
-                    <strong>Nota:</strong> Si estás probando en localhost (127.0.0.1), el widget podría no cargar debido a restricciones de Facebook. 
-                    Prueba en un servidor de producción o usando ngrok/similar para mejores resultados.
-                </p>
-                
-                <!-- Botón para re-procesar widgets pendientes -->
-                <div style="margin-top: 1rem;">
-                    <button id="reprocessFBWidgets" class="btn btn-secondary" style="font-size: 0.9em; padding: 8px 16px;">
-                        <i class="fas fa-sync-alt"></i> Re-procesar Widgets FB
-                    </button>
                 </div>
             </section>
         </main>
