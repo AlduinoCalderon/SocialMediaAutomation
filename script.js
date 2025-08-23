@@ -172,36 +172,76 @@ function initializeApp() {
     console.log('✅ [APP] Aplicación inicializada correctamente');
 }
 
-// Función para verificar el estado de los SDKs
+// Función para verificar el estado de los SDKs con información extendida
 function checkSDKStatus() {
-    console.log('📊 [SDK STATUS] Estado detallado de SDKs:');
-    console.log('- Facebook SDK (appState):', appState.facebookSDKReady ? '✅ Listo' : '❌ No disponible');
-    console.log('- Facebook SDK (window.FB):', window.FB ? '✅ Disponible' : '❌ No cargado');
-    console.log('- Facebook XFBML:', (window.FB && window.FB.XFBML) ? '✅ Disponible' : '❌ No disponible');
-    console.log('- Twitter SDK:', appState.twitterSDKReady ? '✅ Listo' : '❌ No disponible');
+    console.log('📊 [SDK STATUS] === DIAGNÓSTICO COMPLETO DE SDKs ===');
     
-    // CORREGIR AUTOMÁTICAMENTE si FB está disponible pero appState dice que no
+    // Estado de Facebook
+    console.log('📊 [SDK STATUS] Facebook SDK:');
+    console.log('  - appState.facebookSDKReady:', appState.facebookSDKReady ? '✅ Listo' : '❌ No disponible');
+    console.log('  - window.FB:', window.FB ? '✅ Disponible' : '❌ No cargado');
+    console.log('  - window.FB.XFBML:', (window.FB && window.FB.XFBML) ? '✅ Disponible' : '❌ No disponible');
+    console.log('  - window.appState:', window.appState ? '✅ Existe' : '❌ No existe');
+    console.log('  - window.appState.facebookSDKReady:', window.appState?.facebookSDKReady ? '✅ Listo' : '❌ No disponible');
+    
+    // Estado de Twitter
+    console.log('📊 [SDK STATUS] Twitter SDK:');
+    console.log('  - appState.twitterSDKReady:', appState.twitterSDKReady ? '✅ Listo' : '❌ No disponible');
+    console.log('  - window.twttr:', window.twttr ? '✅ Disponible' : '❌ No cargado');
+    console.log('  - window.twttr.widgets:', (window.twttr && window.twttr.widgets) ? '✅ Disponible' : '❌ No disponible');
+    
+    // Diagnóstico de widgets en DOM
+    const fbWidgets = document.querySelectorAll('.fb-post');
+    const fbIframes = document.querySelectorAll('iframe[src*="facebook"]');
+    const pendingFbWidgets = document.querySelectorAll('.fb-post[data-pending="true"]');
+    
+    console.log('📊 [SDK STATUS] Estado del DOM:');
+    console.log('  - Widgets de Facebook (.fb-post):', fbWidgets.length);
+    console.log('  - iframes de Facebook:', fbIframes.length);
+    console.log('  - Widgets pendientes:', pendingFbWidgets.length);
+    
+    // Verificar scripts cargados
+    const fbScript = document.querySelector('script[src*="connect.facebook.net"]');
+    const twitterScript = document.querySelector('script[src*="platform.twitter.com"]');
+    
+    console.log('📊 [SDK STATUS] Scripts cargados:');
+    console.log('  - Script de Facebook:', fbScript ? '✅ Presente' : '❌ No encontrado');
+    console.log('  - Script de Twitter:', twitterScript ? '✅ Presente' : '❌ No encontrado');
+    
+    // CORRECCIÓN AUTOMÁTICA mejorada
+    let correctionMade = false;
+    
     if (window.FB && window.FB.XFBML && !appState.facebookSDKReady) {
-        console.log('� [SDK STATUS] CORRIGIENDO inconsistencia detectada...');
+        console.log('🔧 [SDK STATUS] CORRIGIENDO inconsistencia de Facebook SDK...');
         appState.facebookSDKReady = true;
         if (window.appState) {
             window.appState.facebookSDKReady = true;
         }
-        console.log('✅ [SDK STATUS] Estado de Facebook SDK CORREGIDO automáticamente');
-        
-        // Procesar widgets pendientes si los hay
-        const pendingWidgets = document.querySelectorAll('.fb-post[data-pending="true"]');
-        if (pendingWidgets.length > 0) {
-            console.log(`🔄 [SDK STATUS] Procesando ${pendingWidgets.length} widgets pendientes tras corrección...`);
-            processPendingFacebookWidgets();
-        }
+        correctionMade = true;
+        console.log('✅ [SDK STATUS] Estado de Facebook SDK CORREGIDO');
     }
     
-    if (!appState.facebookSDKReady && !window.FB) {
-        console.warn('⚠️ [SDK STATUS] Facebook SDK no se ha inicializado. Usando fallbacks.');
-    } else if (appState.facebookSDKReady && window.FB) {
-        console.log('🎉 [SDK STATUS] Facebook SDK completamente funcional');
+    if (window.twttr && window.twttr.widgets && !appState.twitterSDKReady) {
+        console.log('🔧 [SDK STATUS] CORRIGIENDO inconsistencia de Twitter SDK...');
+        appState.twitterSDKReady = true;
+        correctionMade = true;
+        console.log('✅ [SDK STATUS] Estado de Twitter SDK CORREGIDO');
     }
+    
+    // Procesar widgets pendientes si se hizo corrección
+    if (correctionMade && pendingFbWidgets.length > 0) {
+        console.log(`🔄 [SDK STATUS] Procesando ${pendingFbWidgets.length} widgets pendientes tras corrección...`);
+        processPendingFacebookWidgets();
+    }
+    
+    // Resumen final
+    const fbStatus = (appState.facebookSDKReady && window.FB && window.FB.XFBML) ? '🟢 FUNCIONAL' : '🔴 PROBLEMA';
+    const twitterStatus = (appState.twitterSDKReady && window.twttr && window.twttr.widgets) ? '🟢 FUNCIONAL' : '🔴 PROBLEMA';
+    
+    console.log('📊 [SDK STATUS] === RESUMEN ===');
+    console.log(`  - Facebook SDK: ${fbStatus}`);
+    console.log(`  - Twitter SDK: ${twitterStatus}`);
+    console.log('📊 [SDK STATUS] === FIN DIAGNÓSTICO ===');
 }
 
 // Función para agregar botón de volver arriba
@@ -459,138 +499,124 @@ async function loadWidget(link) {
     }
 }
 
-// Función para cargar widget de Facebook (implementación correcta según documentación oficial)
+// Función para cargar widget de Facebook (implementación oficial sin interferencias)
 async function loadFacebookWidget(link, container) {
-    console.log('🔍 [FB DEBUG] Iniciando carga de Facebook widget para:', link.url);
-    
-    // Mostrar indicador de carga inicial
-    showFacebookLoading(container);
-    
-    // Esperar un momento para que se vea el indicador
-    await new Promise(resolve => setTimeout(resolve, 500));
+    console.log('🔍 [FB WIDGET] Iniciando carga para:', link.url);
+    console.log('🔍 [FB WIDGET] Estado inicial del SDK:', {
+        appStateFB: appState.facebookSDKReady,
+        windowFB: !!window.FB,
+        windowFBXFBML: !!(window.FB && window.FB.XFBML),
+        globalAppState: !!(window.appState && window.appState.facebookSDKReady)
+    });
     
     try {
-        // Extraer el ID del post de Facebook (validación básica)
-        const postId = extractFacebookPostId(link.url);
-        console.log('🔍 [FB DEBUG] Post ID extraído:', postId);
-        
-        if (!postId) {
-            console.error('❌ [FB DEBUG] No se pudo extraer el ID del post');
-            throw new Error('No se pudo extraer el ID del post de Facebook');
+        // Validar URL de Facebook
+        if (!link.url.includes('facebook.com')) {
+            throw new Error('URL no es de Facebook');
         }
         
-        console.log('🔍 [FB DEBUG] Estado del SDK:', {
-            facebookSDKReady: appState.facebookSDKReady,
-            windowFB: !!window.FB,
-            windowFBXFBML: !!(window.FB && window.FB.XFBML),
-            appStateExists: !!window.appState
-        });
+        // IMPORTANTE: Seguir documentación oficial de Facebook
+        // No añadir estilos CSS personalizados que interfieran con el widget
+        // No redimensionar forzadamente las ventanas de Facebook
         
-        // Crear el widget de Facebook usando la estructura oficial
-        // Según documentación: https://developers.facebook.com/docs/plugins/post/
+        // Crear el widget usando EXACTAMENTE la estructura oficial
         const fbHTML = `
             <div class="fb-post" 
                  data-href="${link.url}" 
                  data-width="500" 
-                 data-show-text="true">
-                <!-- Contenido de respaldo mientras carga el widget -->
-                <blockquote cite="${link.url}" class="fb-xfbml-parse-ignore">
-                    <p>Cargando publicación de Facebook...</p>
-                    <a href="${link.url}" target="_blank" rel="noopener noreferrer">Ver publicación original</a>
-                </blockquote>
+                 data-show-text="true"
+                 data-lazy="false">
             </div>
         `;
         
-        console.log('🔍 [FB DEBUG] HTML generado con estructura oficial');
+        console.log('🔍 [FB WIDGET] Insertando HTML oficial sin modificaciones...');
         container.innerHTML = fbHTML;
         
-        // Manejo inteligente del parsing según el estado del SDK
-        const sdkReady = (appState.facebookSDKReady || window.appState?.facebookSDKReady || window.FB) && window.FB && window.FB.XFBML;
-        
-        // FORZAR sincronización del estado si el SDK está disponible
-        if (window.FB && window.FB.XFBML && !appState.facebookSDKReady) {
-            console.log('🔄 [FB DEBUG] FORZANDO sincronización de estado durante carga...');
-            appState.facebookSDKReady = true;
-            if (window.appState) {
-                window.appState.facebookSDKReady = true;
+        // Verificar y sincronizar estado del SDK
+        if (window.FB && window.FB.XFBML) {
+            if (!appState.facebookSDKReady) {
+                console.log('🔄 [FB WIDGET] Sincronizando estado del SDK...');
+                appState.facebookSDKReady = true;
+                if (window.appState) {
+                    window.appState.facebookSDKReady = true;
+                }
             }
-            console.log('✅ [FB DEBUG] Estado sincronizado: SDK disponible');
-        }
-        
-        if (sdkReady) {
-            console.log('✅ [FB DEBUG] SDK listo, parseando inmediatamente');
+            
+            console.log('✅ [FB WIDGET] SDK disponible - Ejecutando parse inmediatamente');
             try {
-                // Usar FB.XFBML.parse() en el contenedor específico
+                // Usar el método oficial recomendado por Facebook
                 window.FB.XFBML.parse(container);
-                console.log('✅ [FB DEBUG] FB.XFBML.parse() ejecutado exitosamente');
+                console.log('✅ [FB WIDGET] FB.XFBML.parse() ejecutado exitosamente');
             } catch (parseError) {
-                console.error('❌ [FB DEBUG] Error en FB.XFBML.parse():', parseError);
-                // En caso de error, mostrar fallback
+                console.error('❌ [FB WIDGET] Error en parse:', parseError);
                 showFacebookFallback(link, container);
                 return;
             }
         } else {
-            console.log('⏳ [FB DEBUG] SDK no listo, marcando como pendiente');
-            // Marcar como pendiente para cuando el SDK esté listo
+            console.log('⏳ [FB WIDGET] SDK no disponible - Marcando como pendiente');
             const fbPost = container.querySelector('.fb-post');
             if (fbPost) {
                 fbPost.setAttribute('data-pending', 'true');
-                console.log('✅ [FB DEBUG] Marcado como pendiente para procesamiento posterior');
+                console.log('✅ [FB WIDGET] Marcado para procesamiento posterior');
             }
         }
         
-        // Verificación de carga del widget (solo verificamos la presencia del iframe, no su contenido por CORS)
+        // Verificación del estado del widget después de tiempo razonable
         setTimeout(() => {
-            console.log('🔍 [FB DEBUG] Verificando estado después de 8 segundos...');
+            console.log('🔍 [FB WIDGET] === VERIFICACIÓN DE ESTADO ===');
             
             const fbPost = container.querySelector('.fb-post');
             const iframe = container.querySelector('iframe');
+            const spans = container.querySelectorAll('span');
+            const allElements = container.children.length;
             
-            console.log('🔍 [FB DEBUG] Elementos encontrados:', {
-                fbPost: !!fbPost,
-                iframe: !!iframe,
-                iframeHeight: iframe ? iframe.offsetHeight : 'no iframe',
-                iframeWidth: iframe ? iframe.offsetWidth : 'no iframe',
-                iframeDisplay: iframe ? iframe.style.display : 'no iframe',
-                containerChildren: container.children.length
+            console.log('🔍 [FB WIDGET] Análisis del DOM:', {
+                hasOriginalDiv: !!fbPost,
+                hasIframe: !!iframe,
+                spanCount: spans.length,
+                totalElements: allElements,
+                containerHTML: container.innerHTML.substring(0, 200) + '...'
             });
             
-            // Verificación simple: solo revisar si existe el iframe y tiene dimensiones razonables
-            // NO intentamos acceder al contenido del iframe por restricciones CORS
-            if (!iframe || iframe.style.display === 'none' || iframe.offsetHeight < 100) {
-                console.log('❌ [FB DEBUG] Widget no se cargó correctamente, mostrando fallback');
-                console.log('🔍 [FB DEBUG] Criterios de verificación:', {
-                    iframeExists: !!iframe,
-                    notHidden: iframe ? iframe.style.display !== 'none' : false,
-                    hasMinHeight: iframe ? iframe.offsetHeight >= 100 : false,
-                    actualHeight: iframe ? iframe.offsetHeight : 'no iframe'
-                });
-                // Mostrar contenido de respaldo cuando el widget falla
-                showFacebookFallback(link, container);
-            } else {
-                console.log('✅ [FB DEBUG] Facebook widget cargado exitosamente');
-                console.log('🔍 [FB DEBUG] Iframe características:', {
+            if (iframe) {
+                console.log('🔍 [FB WIDGET] Propiedades del iframe:', {
+                    src: iframe.src ? 'tiene src' : 'sin src',
                     width: iframe.offsetWidth,
                     height: iframe.offsetHeight,
-                    visible: iframe.style.display !== 'none'
+                    display: iframe.style.display || 'default',
+                    visibility: iframe.style.visibility || 'default'
                 });
                 
-                // NOTA IMPORTANTE: No intentamos acceder al contenido del iframe
-                // debido a las restricciones de CORS. Esto es normal y esperado.
-                console.log('ℹ️ [FB DEBUG] Contenido del iframe no verificable por políticas CORS (esto es normal)');
-                
-                // Remover el indicador de carga si existe
-                const loadingElement = container.querySelector('.fb-post[data-pending="true"]');
-                if (loadingElement) {
-                    loadingElement.removeAttribute('data-pending');
-                    console.log('✅ [FB DEBUG] Removido indicador de carga');
+                // Verificar si el iframe parece estar funcionando
+                if (iframe.offsetHeight > 50 && iframe.offsetWidth > 100) {
+                    console.log('✅ [FB WIDGET] Widget parece estar funcionando correctamente');
+                    
+                    // Remover indicador de pendiente si existe
+                    if (fbPost && fbPost.hasAttribute('data-pending')) {
+                        fbPost.removeAttribute('data-pending');
+                        console.log('✅ [FB WIDGET] Removido estado pendiente');
+                    }
+                    return;
                 }
             }
-        }, 8000); // Reducido a 8 segundos para mejor experiencia de usuario
+            
+            // Si no hay iframe o parece que falló
+            if (!iframe && spans.length === 0) {
+                console.log('❌ [FB WIDGET] No se detectaron elementos renderizados');
+                console.log('🔍 [FB WIDGET] Contenido actual del contenedor:', container.innerHTML);
+                showFacebookFallback(link, container);
+            } else if (spans.length > 0 && !iframe) {
+                console.log('⚠️ [FB WIDGET] Se detectaron spans pero no iframe - posible problema de carga');
+                console.log('🔍 [FB WIDGET] Contenido de spans:', Array.from(spans).map(s => s.textContent));
+                showFacebookFallback(link, container);
+            } else {
+                console.log('ℹ️ [FB WIDGET] Estado indeterminado - manteniendo widget actual');
+            }
+            
+        }, 10000); // Aumentar tiempo para dar más oportunidad de carga
         
     } catch (error) {
-        console.error('❌ [FB DEBUG] Error en loadFacebookWidget:', error);
-        // En caso de error, mostrar fallback en lugar de manejar como error CORS
+        console.error('❌ [FB WIDGET] Error general:', error);
         showFacebookFallback(link, container);
     }
 }
@@ -691,28 +717,66 @@ function showFacebookPostUnavailable(link, container) {
     `;
 }
 
-// Función para cargar widget de Instagram (mantener como está)
+// Función para cargar widget de Instagram (método simplificado y oficial)
 async function loadInstagramWidget(link, container) {
-    // Extraer el ID del post de Instagram
-    const match = link.url.match(/instagram\.com\/p\/([^\/\?]+)/);
-    if (!match) {
-        throw new Error('URL de Instagram no válida');
+    console.log('🔍 [IG WIDGET] Iniciando carga para:', link.url);
+    
+    try {
+        // Extraer el ID del post de Instagram
+        const match = link.url.match(/instagram\.com\/p\/([^\/\?]+)/);
+        if (!match) {
+            throw new Error('URL de Instagram no válida');
+        }
+        
+        const postId = match[1];
+        console.log('🔍 [IG WIDGET] Post ID extraído:', postId);
+        
+        // Instagram ya no permite embeds directos debido a restricciones de API
+        // Mostrar un preview bonito en lugar de intentar cargar un iframe que fallará
+        console.log('ℹ️ [IG WIDGET] Mostrando preview en lugar de embed (API restringida)');
+        
+        container.innerHTML = `
+            <div class="instagram-preview">
+                <div class="social-preview-header">
+                    <div class="platform-icon instagram">
+                        <i class="fab fa-instagram"></i>
+                    </div>
+                    <div class="preview-info">
+                        <h4>Publicación de Instagram</h4>
+                        <p>${link.title}</p>
+                        <span class="preview-status">Vista previa disponible</span>
+                    </div>
+                </div>
+                <div class="preview-content">
+                    <div class="preview-placeholder">
+                        <i class="fab fa-instagram"></i>
+                        <p>Contenido de Instagram</p>
+                        <span class="preview-note">Post ID: ${postId}</span>
+                        <div class="preview-help">
+                            <small>💡 Instagram requiere acceso directo para ver el contenido completo</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="preview-actions">
+                    <a href="${link.url}" target="_blank" class="btn btn-primary">
+                        <i class="fab fa-instagram"></i> Ver en Instagram
+                    </a>
+                </div>
+            </div>
+        `;
+        
+        console.log('✅ [IG WIDGET] Preview de Instagram creado exitosamente');
+        
+    } catch (error) {
+        console.error('❌ [IG WIDGET] Error:', error);
+        
+        container.innerHTML = `
+            <div class="error">
+                <i class="fas fa-exclamation-triangle"></i>
+                <p>Error al procesar Instagram. <a href="${link.url}" target="_blank">Ver publicación original</a></p>
+            </div>
+        `;
     }
-    
-    const postId = match[1];
-    const embedUrl = `${CONFIG.platforms.instagram.embedUrl}${postId}/embed/`;
-    
-    container.innerHTML = `
-        <iframe 
-            src="${embedUrl}"
-            width="100%" 
-            height="480" 
-            frameborder="0" 
-            scrolling="no" 
-            allowtransparency="true"
-            style="border-radius:8px;">
-        </iframe>
-    `;
 }
 
 // Función para cargar widget de Twitter/X (solo método que funciona)
@@ -1056,3 +1120,46 @@ function showFacebookLoading(container) {
     `;
     container.innerHTML = loadingHTML;
 }
+
+// Nueva función para debugging detallado de Facebook
+function debugFacebookIntegration() {
+    console.log('🔧 [FB DEBUG] === DEBUGGING DETALLADO DE FACEBOOK ===');
+    
+    // Estado de elementos clave
+    const fbRoot = document.getElementById('fb-root');
+    const fbPosts = document.querySelectorAll('.fb-post');
+    const fbIframes = document.querySelectorAll('iframe[src*="facebook"]');
+    
+    console.log('🔧 [FB DEBUG] Elementos del DOM:');
+    console.log('  - #fb-root existe:', !!fbRoot);
+    console.log('  - Cantidad de .fb-post:', fbPosts.length);
+    console.log('  - Cantidad de iframes de FB:', fbIframes.length);
+    
+    // Analizar cada widget
+    fbPosts.forEach((post, index) => {
+        console.log(`🔧 [FB DEBUG] Widget ${index + 1}:`);
+        console.log('    - data-href:', post.getAttribute('data-href'));
+        console.log('    - data-pending:', post.getAttribute('data-pending'));
+        console.log('    - children count:', post.children.length);
+        console.log('    - innerHTML length:', post.innerHTML.length);
+        
+        const iframe = post.querySelector('iframe');
+        if (iframe) {
+            console.log('    - iframe src:', iframe.src ? 'presente' : 'ausente');
+            console.log('    - iframe dimensions:', `${iframe.offsetWidth}x${iframe.offsetHeight}`);
+        } else {
+            console.log('    - iframe: NO PRESENTE');
+        }
+    });
+    
+    // Estado global de Facebook
+    console.log('🔧 [FB DEBUG] Estado global:');
+    console.log('  - window.FB:', !!window.FB);
+    console.log('  - window.FB.XFBML:', !!(window.FB && window.FB.XFBML));
+    console.log('  - appState.facebookSDKReady:', appState.facebookSDKReady);
+    
+    console.log('🔧 [FB DEBUG] === FIN DEBUGGING ===');
+}
+
+// Hacer la función de debugging disponible globalmente
+window.debugFacebookIntegration = debugFacebookIntegration;
