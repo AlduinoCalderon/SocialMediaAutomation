@@ -509,10 +509,10 @@ async function loadWidget(link) {
     }
 }
 
-// Función para cargar widget de Facebook (implementación oficial sin interferencias)
+// Función para cargar widget de Facebook (implementación híbrida con Graph API y oEmbed)
 async function loadFacebookWidget(link, container) {
-    console.log('🔍 [FB WIDGET] Iniciando carga para:', link.url);
-    console.log('🔍 [FB WIDGET] Estado inicial del SDK:', {
+    console.log('🔍 [FB HYBRID] Iniciando carga híbrida para:', link.url);
+    console.log('🔍 [FB HYBRID] Estado inicial del SDK:', {
         appStateFB: appState.facebookSDKReady,
         windowFB: !!window.FB,
         windowFBXFBML: !!(window.FB && window.FB.XFBML),
@@ -525,118 +525,31 @@ async function loadFacebookWidget(link, container) {
             throw new Error('URL no es de Facebook');
         }
         
-        // IMPORTANTE: Seguir documentación oficial de Facebook
-        // No añadir estilos CSS personalizados que interfieran con el widget
-        // No redimensionar forzadamente las ventanas de Facebook
+        const postId = extractFacebookPostId(link.url);
+        console.log('🔍 [FB HYBRID] Post ID extraído:', postId);
         
-        // Crear el widget usando EXACTAMENTE la estructura oficial
-        const fbHTML = `
-            <div class="fb-post" 
-                 data-href="${link.url}" 
-                 data-width="500" 
-                 data-show-text="true"
-                 data-lazy="false"
-                 data-colorscheme="light">
-            </div>
-        `;
-        
-        console.log('🔍 [FB WIDGET] Insertando HTML oficial sin modificaciones...');
-        console.log('📊 [FB WIDGET] App ID en uso:', window.FB ? window.FB.getAppId() : 'SDK no disponible');
-        container.innerHTML = fbHTML;
-        
-        // Verificar y sincronizar estado del SDK
-        if (window.FB && window.FB.XFBML) {
-            if (!appState.facebookSDKReady) {
-                console.log('🔄 [FB WIDGET] Sincronizando estado del SDK...');
-                appState.facebookSDKReady = true;
-                if (window.appState) {
-                    window.appState.facebookSDKReady = true;
-                }
-            }
-            
-            console.log('✅ [FB WIDGET] SDK disponible - Ejecutando parse inmediatamente');
-            try {
-                // Usar el método oficial recomendado por Facebook
-                window.FB.XFBML.parse(container);
-                console.log('✅ [FB WIDGET] FB.XFBML.parse() ejecutado exitosamente');
-            } catch (parseError) {
-                console.error('❌ [FB WIDGET] Error en parse:', parseError);
-                showFacebookFallback(link, container);
-                return;
-            }
-        } else {
-            console.log('⏳ [FB WIDGET] SDK no disponible - Marcando como pendiente');
-            const fbPost = container.querySelector('.fb-post');
-            if (fbPost) {
-                fbPost.setAttribute('data-pending', 'true');
-                console.log('✅ [FB WIDGET] Marcado para procesamiento posterior');
-            }
+        // MÉTODO 1: Intentar Graph API para tracking máximo
+        console.log('� [FB HYBRID] Probando Graph API...');
+        const graphSuccess = await tryGraphAPI(link.url, postId, container);
+        if (graphSuccess) {
+            console.log('✅ [FB HYBRID] Graph API exitoso - tracking completo activado');
+            return;
         }
         
-        // Verificación del estado del widget después de tiempo razonable
-        setTimeout(() => {
-            console.log('🔍 [FB WIDGET] === VERIFICACIÓN DE ESTADO ===');
-            
-            const fbPost = container.querySelector('.fb-post');
-            const iframe = container.querySelector('iframe');
-            const spans = container.querySelectorAll('span');
-            const allElements = container.children.length;
-            
-            console.log('🔍 [FB WIDGET] Análisis del DOM:', {
-                hasOriginalDiv: !!fbPost,
-                hasIframe: !!iframe,
-                spanCount: spans.length,
-                totalElements: allElements,
-                containerHTML: container.innerHTML.substring(0, 200) + '...'
-            });
-            
-            if (iframe) {
-                console.log('🔍 [FB WIDGET] Propiedades del iframe:', {
-                    src: iframe.src ? 'tiene src' : 'sin src',
-                    width: iframe.offsetWidth,
-                    height: iframe.offsetHeight,
-                    display: iframe.style.display || 'default',
-                    visibility: iframe.style.visibility || 'default'
-                });
-                
-                // Verificar si el iframe parece estar funcionando
-                if (iframe.offsetHeight > 50 && iframe.offsetWidth > 100) {
-                    console.log('✅ [FB WIDGET] Widget parece estar funcionando correctamente');
-                    
-                    // Remover indicador de pendiente si existe
-                    if (fbPost && fbPost.hasAttribute('data-pending')) {
-                        fbPost.removeAttribute('data-pending');
-                        console.log('✅ [FB WIDGET] Removido estado pendiente');
-                    }
-                    
-                    // Trackear uso exitoso
-                    setTimeout(() => {
-                        if (typeof trackFacebookAppUsage === 'function') {
-                            trackFacebookAppUsage();
-                        }
-                    }, 2000);
-                    
-                    return;
-                }
-            }
-            
-            // Si no hay iframe o parece que falló
-            if (!iframe && spans.length === 0) {
-                console.log('❌ [FB WIDGET] No se detectaron elementos renderizados');
-                console.log('🔍 [FB WIDGET] Contenido actual del contenedor:', container.innerHTML);
-                showFacebookFallback(link, container);
-            } else if (spans.length > 0 && !iframe) {
-                console.log('⚠️ [FB WIDGET] Se detectaron spans pero no iframe - posible problema de carga');
-                console.log('🔍 [FB WIDGET] Contenido de spans:', Array.from(spans).map(s => s.textContent));
-                showFacebookFallback(link, container);
-            } else {
-                console.log('ℹ️ [FB WIDGET] Estado indeterminado - manteniendo widget actual');
-            }
-            
-        }, 10000); // Aumentar tiempo para dar más oportunidad de carga
+        // MÉTODO 2: Intentar Meta oEmbed
+        console.log('� [FB HYBRID] Probando Meta oEmbed...');
+        const oembedSuccess = await tryMetaOEmbed(link.url, container);
+        if (oembedSuccess) {
+            console.log('✅ [FB HYBRID] Meta oEmbed exitoso');
+            return;
+        }
+        
+        // MÉTODO 3: Fallback a XFBML (método original)
+        console.log('� [FB HYBRID] Fallback a XFBML estándar...');
+        await loadFacebookWidgetXFBML(link, container);
         
     } catch (error) {
-        console.error('❌ [FB WIDGET] Error general:', error);
+        console.error('❌ [FB HYBRID] Error general:', error);
         showFacebookFallback(link, container);
     }
 }
@@ -1174,4 +1087,251 @@ function trackFacebookAppUsage() {
         }
     }
     return false;
+}
+
+// CONFIGURACIÓN PARA GRAPH API Y META OEMBED
+const META_API_CONFIG = {
+    graphUrl: 'https://graph.facebook.com/v19.0',
+    appId: '1131335178847592', // Tu App ID
+    // Para posts públicos, se puede intentar sin token
+    // En producción, usar server-side con app token
+};
+
+// Función para probar Graph API
+async function tryGraphAPI(postUrl, postId, container) {
+    if (!postId) return false;
+    
+    try {
+        console.log('📊 [GRAPH API] Intentando obtener datos del post:', postId);
+        
+        // Intentar obtener datos básicos del post público
+        const endpoint = `${META_API_CONFIG.graphUrl}/${postId}`;
+        const params = new URLSearchParams({
+            fields: 'id,message,created_time,permalink_url,full_picture',
+            // Para posts públicos, a veces funciona sin token
+        });
+        
+        const response = await fetch(`${endpoint}?${params}`);
+        const data = await response.json();
+        
+        if (data.error) {
+            console.log('⚠️ [GRAPH API] Error (esperado sin token):', data.error.message);
+            return false;
+        }
+        
+        console.log('✅ [GRAPH API] Datos obtenidos exitosamente:', data);
+        
+        // Crear widget personalizado con datos de Graph API
+        createCustomFacebookWidget(data, postUrl, container);
+        
+        // Forzar tracking llamando a la API
+        trackGraphAPIUsage(postId);
+        
+        return true;
+        
+    } catch (error) {
+        console.log('ℹ️ [GRAPH API] No disponible:', error.message);
+        return false;
+    }
+}
+
+// Función para probar Meta oEmbed
+async function tryMetaOEmbed(postUrl, container) {
+    try {
+        console.log('🔗 [OEMBED] Intentando obtener embed para:', postUrl);
+        
+        const endpoint = `${META_API_CONFIG.graphUrl}/oembed_post`;
+        const params = new URLSearchParams({
+            url: postUrl,
+            maxwidth: 500,
+            omitscript: false
+        });
+        
+        const response = await fetch(`${endpoint}?${params}`);
+        const data = await response.json();
+        
+        if (data.error) {
+            console.log('⚠️ [OEMBED] Error:', data.error.message);
+            return false;
+        }
+        
+        if (data.html) {
+            console.log('✅ [OEMBED] HTML obtenido exitosamente');
+            container.innerHTML = data.html;
+            
+            // Ejecutar scripts si los hay
+            const scripts = container.querySelectorAll('script');
+            scripts.forEach(script => {
+                const newScript = document.createElement('script');
+                newScript.textContent = script.textContent;
+                document.head.appendChild(newScript);
+            });
+            
+            return true;
+        }
+        
+        return false;
+        
+    } catch (error) {
+        console.log('ℹ️ [OEMBED] No disponible:', error.message);
+        return false;
+    }
+}
+
+// Función para crear widget personalizado con datos de Graph API
+function createCustomFacebookWidget(postData, originalUrl, container) {
+    const { id, message, created_time, permalink_url, full_picture } = postData;
+    const date = new Date(created_time).toLocaleDateString();
+    
+    const customWidget = `
+        <div class="custom-fb-post" style="
+            border: 1px solid #dddfe2;
+            border-radius: 8px;
+            background: white;
+            padding: 16px;
+            max-width: 500px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        ">
+            <div class="fb-header" style="display: flex; align-items: center; margin-bottom: 12px;">
+                <div class="platform-icon facebook" style="
+                    background: #1877f2;
+                    border-radius: 50%;
+                    width: 40px;
+                    height: 40px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    margin-right: 12px;
+                ">
+                    <i class="fab fa-facebook" style="color: white; font-size: 20px;"></i>
+                </div>
+                <div>
+                    <div style="font-weight: 600; color: #1c1e21;">Facebook Post</div>
+                    <div style="color: #65676b; font-size: 13px;">${date}</div>
+                </div>
+            </div>
+            
+            ${message ? `<div class="fb-message" style="
+                color: #1c1e21;
+                font-size: 14px;
+                line-height: 1.4;
+                margin-bottom: 12px;
+                white-space: pre-wrap;
+            ">${message}</div>` : ''}
+            
+            ${full_picture ? `<div class="fb-image" style="margin-bottom: 12px;">
+                <img src="${full_picture}" style="
+                    max-width: 100%;
+                    height: auto;
+                    border-radius: 8px;
+                    display: block;
+                " alt="Post image" />
+            </div>` : ''}
+            
+            <div class="fb-actions" style="
+                border-top: 1px solid #e4e6ea;
+                padding-top: 12px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            ">
+                <div style="color: #65676b; font-size: 13px;">
+                    📊 Cargado via Graph API - Tracking activo
+                </div>
+                <a href="${permalink_url || originalUrl}" target="_blank" style="
+                    background: #1877f2;
+                    color: white;
+                    padding: 8px 16px;
+                    border-radius: 6px;
+                    text-decoration: none;
+                    font-size: 14px;
+                    font-weight: 600;
+                ">
+                    Ver en Facebook
+                </a>
+            </div>
+        </div>
+    `;
+    
+    container.innerHTML = customWidget;
+    console.log('✅ [GRAPH API] Widget personalizado creado con datos estructurados');
+}
+
+// Función para trackear uso de Graph API
+function trackGraphAPIUsage(postId) {
+    console.log('📈 [GRAPH API TRACKING] Registrando uso de Graph API para post:', postId);
+    
+    // Múltiples llamadas para asegurar tracking
+    const trackingCalls = [
+        // Llamada básica de info
+        () => {
+            if (window.FB) {
+                window.FB.api(`/${postId}`, { fields: 'id' }, (response) => {
+                    console.log('📊 [TRACKING] FB.api call successful:', !!response.id);
+                });
+            }
+        },
+        
+        // Llamada directa a Graph API
+        () => {
+            fetch(`${META_API_CONFIG.graphUrl}/${postId}?fields=id`)
+                .then(r => r.json())
+                .then(data => {
+                    console.log('📊 [TRACKING] Direct Graph API call:', !!data.id);
+                })
+                .catch(() => console.log('📊 [TRACKING] Direct call completed'));
+        }
+    ];
+    
+    // Ejecutar llamadas de tracking
+    trackingCalls.forEach((call, index) => {
+        setTimeout(() => {
+            try {
+                call();
+            } catch (e) {
+                console.log(`📊 [TRACKING] Call ${index + 1} completed`);
+            }
+        }, index * 1000);
+    });
+}
+
+// Función XFBML original como fallback
+async function loadFacebookWidgetXFBML(link, container) {
+    console.log('🔄 [XFBML FALLBACK] Usando método XFBML estándar');
+    
+    const fbHTML = `
+        <div class="fb-post" 
+             data-href="${link.url}" 
+             data-width="500" 
+             data-show-text="true"
+             data-lazy="false"
+             data-colorscheme="light">
+        </div>
+    `;
+    
+    console.log('🔍 [XFBML FALLBACK] Insertando HTML oficial...');
+    container.innerHTML = fbHTML;
+    
+    // Verificar y sincronizar estado del SDK
+    if (window.FB && window.FB.XFBML) {
+        if (!appState.facebookSDKReady) {
+            appState.facebookSDKReady = true;
+            if (window.appState) {
+                window.appState.facebookSDKReady = true;
+            }
+        }
+        
+        try {
+            window.FB.XFBML.parse(container);
+            console.log('✅ [XFBML FALLBACK] Parse ejecutado exitosamente');
+        } catch (parseError) {
+            console.error('❌ [XFBML FALLBACK] Error en parse:', parseError);
+            showFacebookFallback(link, container);
+        }
+    } else {
+        const fbPost = container.querySelector('.fb-post');
+        if (fbPost) {
+            fbPost.setAttribute('data-pending', 'true');
+        }
+    }
 }
