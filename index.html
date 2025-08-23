@@ -30,10 +30,13 @@
                 appId: '1131335178847592', // Tu App ID real de Facebook
                 cookie: true,
                 xfbml: true,
-                version: 'v19.0' // Versión más reciente estable del SDK
+                version: 'v19.0', // Versión más reciente estable del SDK
+                status: true, // Verificar estado de login
+                frictionlessRequests: true // Para mejor experiencia
             });
             
             console.log('✅ [FB SDK] Facebook SDK inicializado correctamente');
+            console.log('📊 [FB SDK] App ID activo:', FB.getAppId());
             
             // Marcar el SDK como listo globalmente
             if (window.appState) {
@@ -56,6 +59,9 @@
             // Parsear widgets estáticos que ya están en el DOM
             console.log('🔄 [FB SDK] Parseando widgets estáticos...');
             FB.XFBML.parse();
+            
+            // Log adicional para tracking de uso
+            console.log('📈 [FB SDK] SDK completamente inicializado para tracking de uso');
         };
     </script>
     

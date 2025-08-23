@@ -167,6 +167,11 @@ function initializeApp() {
         // Log del estado de widgets estáticos
         const staticWidgets = document.querySelectorAll('.fb-post');
         console.log(`📊 [APP] Widgets estáticos de Facebook encontrados: ${staticWidgets.length}`);
+        
+        // Trackear uso de la app
+        if (typeof trackFacebookAppUsage === 'function') {
+            trackFacebookAppUsage();
+        }
     }, 7000);
     
     console.log('✅ [APP] Aplicación inicializada correctamente');
@@ -525,11 +530,13 @@ async function loadFacebookWidget(link, container) {
                  data-href="${link.url}" 
                  data-width="500" 
                  data-show-text="true"
-                 data-lazy="false">
+                 data-lazy="false"
+                 data-colorscheme="light">
             </div>
         `;
         
         console.log('🔍 [FB WIDGET] Insertando HTML oficial sin modificaciones...');
+        console.log('📊 [FB WIDGET] App ID en uso:', window.FB ? window.FB.getAppId() : 'SDK no disponible');
         container.innerHTML = fbHTML;
         
         // Verificar y sincronizar estado del SDK
@@ -596,6 +603,14 @@ async function loadFacebookWidget(link, container) {
                         fbPost.removeAttribute('data-pending');
                         console.log('✅ [FB WIDGET] Removido estado pendiente');
                     }
+                    
+                    // Trackear uso exitoso
+                    setTimeout(() => {
+                        if (typeof trackFacebookAppUsage === 'function') {
+                            trackFacebookAppUsage();
+                        }
+                    }, 2000);
+                    
                     return;
                 }
             }
@@ -1125,3 +1140,33 @@ function debugFacebookIntegration() {
 
 // Hacer la función de debugging disponible globalmente
 window.debugFacebookIntegration = debugFacebookIntegration;
+
+// Función para forzar el registro de uso de la app de Facebook
+function trackFacebookAppUsage() {
+    if (window.FB && window.FB.getAppId()) {
+        console.log('📈 [FB TRACKING] Registrando uso de app:', window.FB.getAppId());
+        
+        // Forzar una llamada API simple para registrar uso
+        try {
+            window.FB.api('/me', function(response) {
+                if (response && !response.error) {
+                    console.log('✅ [FB TRACKING] Uso de app registrado exitosamente');
+                } else {
+                    console.log('ℹ️ [FB TRACKING] Usuario no logueado, pero SDK en uso');
+                }
+            });
+        } catch (error) {
+            console.log('ℹ️ [FB TRACKING] SDK en uso, usuario no autenticado');
+        }
+        
+        // Verificar plugins activos
+        const fbPosts = document.querySelectorAll('.fb-post[fb-xfbml-state="rendered"]');
+        console.log(`📊 [FB TRACKING] Plugins activos: ${fbPosts.length}`);
+        
+        if (fbPosts.length > 0) {
+            console.log('✅ [FB TRACKING] Plugins de Facebook renderizados correctamente');
+            return true;
+        }
+    }
+    return false;
+}
