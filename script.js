@@ -17,8 +17,8 @@ const CONFIG = {
         },
         twitter: {
             name: 'X/Twitter',
-            icon: 'fab fa-x-twitter',
-            color: '#000000',
+            icon: 'fab fa-twitter',
+            color: '#1da1f2',
             urlPattern: /(?:https?:\/\/)?(?:www\.)?(?:x\.com|twitter\.com)\/[^\s]+/i,
             embedUrl: 'https://platform.twitter.com/widgets.js'
         }
@@ -717,66 +717,28 @@ function showFacebookPostUnavailable(link, container) {
     `;
 }
 
-// Función para cargar widget de Instagram (método simplificado y oficial)
+// Función para cargar widget de Instagram (volviendo al método original)
 async function loadInstagramWidget(link, container) {
-    console.log('🔍 [IG WIDGET] Iniciando carga para:', link.url);
-    
-    try {
-        // Extraer el ID del post de Instagram
-        const match = link.url.match(/instagram\.com\/p\/([^\/\?]+)/);
-        if (!match) {
-            throw new Error('URL de Instagram no válida');
-        }
-        
-        const postId = match[1];
-        console.log('🔍 [IG WIDGET] Post ID extraído:', postId);
-        
-        // Instagram ya no permite embeds directos debido a restricciones de API
-        // Mostrar un preview bonito en lugar de intentar cargar un iframe que fallará
-        console.log('ℹ️ [IG WIDGET] Mostrando preview en lugar de embed (API restringida)');
-        
-        container.innerHTML = `
-            <div class="instagram-preview">
-                <div class="social-preview-header">
-                    <div class="platform-icon instagram">
-                        <i class="fab fa-instagram"></i>
-                    </div>
-                    <div class="preview-info">
-                        <h4>Publicación de Instagram</h4>
-                        <p>${link.title}</p>
-                        <span class="preview-status">Vista previa disponible</span>
-                    </div>
-                </div>
-                <div class="preview-content">
-                    <div class="preview-placeholder">
-                        <i class="fab fa-instagram"></i>
-                        <p>Contenido de Instagram</p>
-                        <span class="preview-note">Post ID: ${postId}</span>
-                        <div class="preview-help">
-                            <small>💡 Instagram requiere acceso directo para ver el contenido completo</small>
-                        </div>
-                    </div>
-                </div>
-                <div class="preview-actions">
-                    <a href="${link.url}" target="_blank" class="btn btn-primary">
-                        <i class="fab fa-instagram"></i> Ver en Instagram
-                    </a>
-                </div>
-            </div>
-        `;
-        
-        console.log('✅ [IG WIDGET] Preview de Instagram creado exitosamente');
-        
-    } catch (error) {
-        console.error('❌ [IG WIDGET] Error:', error);
-        
-        container.innerHTML = `
-            <div class="error">
-                <i class="fas fa-exclamation-triangle"></i>
-                <p>Error al procesar Instagram. <a href="${link.url}" target="_blank">Ver publicación original</a></p>
-            </div>
-        `;
+    // Extraer el ID del post de Instagram
+    const match = link.url.match(/instagram\.com\/p\/([^\/\?]+)/);
+    if (!match) {
+        throw new Error('URL de Instagram no válida');
     }
+    
+    const postId = match[1];
+    const embedUrl = `${CONFIG.platforms.instagram.embedUrl}${postId}/embed/`;
+    
+    container.innerHTML = `
+        <iframe 
+            src="${embedUrl}"
+            width="100%" 
+            height="480" 
+            frameborder="0" 
+            scrolling="no" 
+            allowtransparency="true"
+            style="border-radius:8px;">
+        </iframe>
+    `;
 }
 
 // Función para cargar widget de Twitter/X (solo método que funciona)
@@ -898,7 +860,7 @@ function showTwitterFallback(link, container, username) {
         <div class="twitter-preview">
             <div class="social-preview-header">
                 <div class="platform-icon twitter">
-                    <i class="fab fa-x-twitter"></i>
+                    <i class="fab fa-twitter"></i>
                 </div>
                 <div class="preview-info">
                     <h4>Tweet de @${username}</h4>
@@ -908,7 +870,7 @@ function showTwitterFallback(link, container, username) {
             </div>
             <div class="preview-content">
                 <div class="preview-placeholder">
-                    <i class="fab fa-x-twitter"></i>
+                    <i class="fab fa-twitter"></i>
                     <p>Contenido de X/Twitter</p>
                     <span class="preview-note">Este tweet está disponible en X/Twitter</span>
                     <div class="preview-help">
@@ -918,7 +880,7 @@ function showTwitterFallback(link, container, username) {
             </div>
             <div class="preview-actions">
                 <a href="${link.url}" target="_blank" class="btn btn-primary">
-                    <i class="fab fa-x-twitter"></i> Ver en X/Twitter
+                    <i class="fab fa-twitter"></i> Ver en X/Twitter
                 </a>
             </div>
         </div>
