@@ -138,7 +138,10 @@ function initializeApp() {
     // Scroll listener para mostrar/ocultar botón volver arriba
     window.addEventListener('scroll', handleScroll);
     
-    // Verificar estado de SDKs después de 3 segundos
+    // Verificar estado de SDKs después de 1 segundo (más temprano)
+    setTimeout(checkSDKStatus, 1000);
+    
+    // Segunda verificación después de 3 segundos
     setTimeout(checkSDKStatus, 3000);
     
     // Verificar y re-procesar widgets pendientes después de 5 segundos
@@ -177,15 +180,27 @@ function checkSDKStatus() {
     console.log('- Facebook XFBML:', (window.FB && window.FB.XFBML) ? '✅ Disponible' : '❌ No disponible');
     console.log('- Twitter SDK:', appState.twitterSDKReady ? '✅ Listo' : '❌ No disponible');
     
-    // Sincronizar estado si FB está disponible pero appState dice que no
+    // CORREGIR AUTOMÁTICAMENTE si FB está disponible pero appState dice que no
     if (window.FB && window.FB.XFBML && !appState.facebookSDKReady) {
-        console.log('🔄 [SDK STATUS] Detectada inconsistencia, sincronizando estado...');
+        console.log('� [SDK STATUS] CORRIGIENDO inconsistencia detectada...');
         appState.facebookSDKReady = true;
-        console.log('✅ [SDK STATUS] Estado de Facebook SDK corregido');
+        if (window.appState) {
+            window.appState.facebookSDKReady = true;
+        }
+        console.log('✅ [SDK STATUS] Estado de Facebook SDK CORREGIDO automáticamente');
+        
+        // Procesar widgets pendientes si los hay
+        const pendingWidgets = document.querySelectorAll('.fb-post[data-pending="true"]');
+        if (pendingWidgets.length > 0) {
+            console.log(`🔄 [SDK STATUS] Procesando ${pendingWidgets.length} widgets pendientes tras corrección...`);
+            processPendingFacebookWidgets();
+        }
     }
     
     if (!appState.facebookSDKReady && !window.FB) {
         console.warn('⚠️ [SDK STATUS] Facebook SDK no se ha inicializado. Usando fallbacks.');
+    } else if (appState.facebookSDKReady && window.FB) {
+        console.log('🎉 [SDK STATUS] Facebook SDK completamente funcional');
     }
 }
 
@@ -490,7 +505,17 @@ async function loadFacebookWidget(link, container) {
         container.innerHTML = fbHTML;
         
         // Manejo inteligente del parsing según el estado del SDK
-        const sdkReady = (appState.facebookSDKReady || window.appState?.facebookSDKReady) && window.FB && window.FB.XFBML;
+        const sdkReady = (appState.facebookSDKReady || window.appState?.facebookSDKReady || window.FB) && window.FB && window.FB.XFBML;
+        
+        // FORZAR sincronización del estado si el SDK está disponible
+        if (window.FB && window.FB.XFBML && !appState.facebookSDKReady) {
+            console.log('🔄 [FB DEBUG] FORZANDO sincronización de estado durante carga...');
+            appState.facebookSDKReady = true;
+            if (window.appState) {
+                window.appState.facebookSDKReady = true;
+            }
+            console.log('✅ [FB DEBUG] Estado sincronizado: SDK disponible');
+        }
         
         if (sdkReady) {
             console.log('✅ [FB DEBUG] SDK listo, parseando inmediatamente');
